@@ -465,8 +465,19 @@
         <div class="style-count" id="style-count"></div>
       </div>
     </div>
-    <div style="margin-bottom:16px">
-      <input type="text" id="search-input" placeholder="Search by style name or number..." oninput="renderDashboard()" style="max-width:360px" />
+    <div style="margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <input type="text" id="search-input" placeholder="Search by style name or number..." oninput="renderDashboard()" style="max-width:300px" />
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div>
+          <label style="font-size:12px;color:#6B6B6B;margin-bottom:4px;display:block">ETA From</label>
+          <input type="date" id="eta-from" onchange="renderDashboard()" style="width:160px" />
+        </div>
+        <div>
+          <label style="font-size:12px;color:#6B6B6B;margin-bottom:4px;display:block">ETA To</label>
+          <input type="date" id="eta-to" onchange="renderDashboard()" style="width:160px" />
+        </div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:18px" onclick="clearETA()">Clear</button>
+      </div>
     </div>
     <div class="filters">
       <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
@@ -736,10 +747,22 @@
   }
 
   // LOAD STYLES
+  let allQuotesCache = [];
+
   async function loadStyles() {
-    const { data, error } = await db.from('styles').select('*').order('created_at', { ascending: false });
-    if (error) { toast('Error loading styles', 'error'); return; }
-    allStyles = data || [];
+    const [stylesRes, quotesRes] = await Promise.all([
+      db.from('styles').select('*').order('created_at', { ascending: false }),
+      db.from('quotes').select('style_id, sample_eta')
+    ]);
+    if (stylesRes.error) { toast('Error loading styles', 'error'); return; }
+    allStyles = stylesRes.data || [];
+    allQuotesCache = quotesRes.data || [];
+    renderDashboard();
+  }
+
+  function clearETA() {
+    document.getElementById('eta-from').value = '';
+    document.getElementById('eta-to').value = '';
     renderDashboard();
   }
 
@@ -752,7 +775,10 @@
 
   function renderDashboard() {
     const grid = document.getElementById('styles-grid');
-    const query = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+    const query   = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+    const etaFrom = document.getElementById('eta-from')?.value || '';
+    const etaTo   = document.getElementById('eta-to')?.value || '';
+
     let list = allStyles;
     if (currentFilter !== 'all') {
       list = allStyles.filter(s => s.gender === currentFilter || s.status === currentFilter);
@@ -762,6 +788,16 @@
         s.style_name.toLowerCase().includes(query) ||
         (s.style_number && s.style_number.toLowerCase().includes(query))
       );
+    }
+    if (etaFrom || etaTo) {
+      list = list.filter(s => {
+        const quotes = allQuotesCache.filter(q => q.style_id === s.id && q.sample_eta);
+        return quotes.some(q => {
+          if (etaFrom && q.sample_eta < etaFrom) return false;
+          if (etaTo   && q.sample_eta > etaTo)   return false;
+          return true;
+        });
+      });
     }
 
     const count = document.getElementById('style-count');
