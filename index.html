@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dev Tracker</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #F8F7F5;
+      color: #1A1A1A;
+      min-height: 100vh;
+    }
+
+    .hidden { display: none !important; }
+
+    /* LOGIN */
+    #view-login {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #1A1A1A;
+    }
+    .login-card {
+      background: white;
+      border-radius: 16px;
+      padding: 48px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .login-card h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+    .login-card .subtitle { color: #6B6B6B; font-size: 14px; margin-bottom: 32px; }
+    .login-error { color: #DC2626; font-size: 13px; margin-top: 12px; display: none; }
+
+    /* HEADER */
+    .header {
+      background: #1A1A1A;
+      color: white;
+      padding: 0 32px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .header-logo { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+
+    /* CONTAINER */
+    .container { max-width: 1200px; margin: 0 auto; padding: 32px; }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .btn-primary { background: #1A1A1A; color: white; }
+    .btn-primary:hover { background: #333; }
+    .btn-secondary { background: white; color: #1A1A1A; border: 1px solid #E0DFDb; }
+    .btn-secondary:hover { background: #F8F7F5; }
+    .btn-danger { background: #FEE2E2; color: #DC2626; border: none; }
+    .btn-danger:hover { background: #FECACA; }
+    .btn-white { background: white; color: #1A1A1A; }
+    .btn-white:hover { background: #EFEFEF; }
+    .btn-sm { padding: 7px 14px; font-size: 13px; }
+    .btn-full { width: 100%; justify-content: center; }
+
+    /* FORMS */
+    .form-group { margin-bottom: 18px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    label { display: block; font-size: 13px; font-weight: 500; color: #444; margin-bottom: 6px; }
+    input[type=text], input[type=date], input[type=number], input[type=password], select, textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #E0DFDB;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      color: #1A1A1A;
+      background: white;
+      transition: border-color 0.15s;
+      appearance: none;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #1A1A1A; }
+    textarea { resize: vertical; min-height: 80px; }
+
+    /* DASHBOARD */
+    .dashboard-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .dashboard-title { font-size: 22px; font-weight: 700; }
+    .style-count { font-size: 14px; color: #6B6B6B; margin-top: 2px; }
+
+    .filters {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid #E0DFDB;
+      background: white;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: #6B6B6B;
+      font-family: inherit;
+    }
+    .filter-btn.active { background: #1A1A1A; color: white; border-color: #1A1A1A; }
+    .filter-btn:hover:not(.active) { border-color: #1A1A1A; color: #1A1A1A; }
+
+    /* STYLE CARDS */
+    .styles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+    .style-card {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #E0DFDb;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .style-card:hover {
+      border-color: #1A1A1A;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+      transform: translateY(-2px);
+    }
+    .style-card-image {
+      height: 200px;
+      background: #F0EFEB;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .style-card-image img { width: 100%; height: 100%; object-fit: cover; }
+    .no-image-placeholder { color: #BBB; font-size: 13px; }
+    .style-card-body { padding: 16px; }
+    .style-card-name { font-size: 15px; font-weight: 600; }
+    .style-card-number { font-size: 12px; color: #6B6B6B; margin-top: 2px; }
+    .style-card-meta { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+    .style-card-date { font-size: 12px; color: #6B6B6B; margin-top: 8px; }
+
+    /* BADGES */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .badge-spec-ready    { background: #EBEBEB; color: #555; }
+    .badge-passed        { background: #DBEAFE; color: #1D4ED8; }
+    .badge-sampling      { background: #EDE9FE; color: #6D28D9; }
+    .badge-eta           { background: #FEF3C7; color: #B45309; }
+    .badge-received      { background: #DCFCE7; color: #166534; }
+    .badge-revision      { background: #FEE2E2; color: #B91C1C; }
+    .badge-approved      { background: #D1FAE5; color: #065F46; }
+    .badge-cancelled     { background: #F3F4F6; color: #6B7280; }
+    .badge-womens        { background: #FCE7F3; color: #9D174D; }
+    .badge-mens          { background: #DBEAFE; color: #1E40AF; }
+
+    /* EMPTY STATE */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 80px 32px;
+    }
+    .empty-state h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; color: #6B6B6B; }
+
+    /* DETAIL VIEW */
+    .detail-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 32px;
+      align-items: start;
+    }
+    .detail-card {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #E0DFDb;
+      overflow: hidden;
+      position: sticky;
+      top: 90px;
+    }
+    .detail-image {
+      height: 280px;
+      background: #F0EFEB;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .detail-image img { width: 100%; height: 100%; object-fit: cover; }
+    .detail-info { padding: 20px; }
+    .detail-name { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+    .detail-number { font-size: 13px; color: #6B6B6B; margin-bottom: 16px; }
+    .detail-meta { display: flex; flex-direction: column; gap: 11px; }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+    }
+    .detail-label { color: #6B6B6B; }
+    .detail-value { font-weight: 500; }
+    .detail-notes {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #F0EFEB;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.5;
+    }
+    .detail-actions {
+      padding: 14px 20px;
+      border-top: 1px solid #F0EFEB;
+      display: flex;
+      gap: 8px;
+    }
+
+    /* QUOTES */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-title { font-size: 17px; font-weight: 600; }
+    .quotes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
+    }
+    .quote-card {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #E0DFDb;
+      padding: 18px;
+    }
+    .quote-factory { font-size: 15px; font-weight: 600; }
+    .quote-contact { font-size: 13px; color: #6B6B6B; margin-top: 2px; margin-bottom: 16px; min-height: 18px; }
+    .quote-prices {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .price-block {
+      background: #F8F7F5;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .price-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 4px;
+    }
+    .price-value { font-size: 20px; font-weight: 700; color: #1A1A1A; }
+    .quote-fields { display: flex; flex-direction: column; gap: 8px; }
+    .quote-field { display: flex; justify-content: space-between; font-size: 13px; }
+    .quote-field-label { color: #6B6B6B; }
+    .quote-field-value { font-weight: 500; }
+    .quote-notes {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #F0EFEB;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.5;
+    }
+    .quote-actions {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid #F0EFEB;
+      display: flex;
+      gap: 8px;
+    }
+    .no-quotes { font-size: 14px; color: #6B6B6B; padding: 32px 0; }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 24px;
+    }
+    .modal {
+      background: white;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+      padding: 22px 24px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      background: white;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #F0EFEB;
+    }
+    .modal-title { font-size: 17px; font-weight: 600; }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
+      color: #888;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .modal-close:hover { background: #F0EFEB; color: #1A1A1A; }
+    .modal-body { padding: 24px; }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid #F0EFEB;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      position: sticky;
+      bottom: 0;
+      background: white;
+    }
+
+    /* IMAGE UPLOAD */
+    .upload-area {
+      border: 2px dashed #E0DFDB;
+      border-radius: 8px;
+      padding: 28px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: #FAFAF9;
+    }
+    .upload-area:hover { border-color: #1A1A1A; background: white; }
+    .upload-icon { font-size: 28px; margin-bottom: 6px; }
+    .upload-text { font-size: 13px; color: #6B6B6B; }
+    .upload-text strong { color: #1A1A1A; }
+    .image-preview-wrap { margin-top: 12px; position: relative; display: inline-block; width: 100%; }
+    .image-preview-wrap img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; display: block; }
+    .remove-image {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1A1A1A;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      z-index: 999;
+      animation: fadeUp 0.2s ease;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+    .toast.error { background: #DC2626; }
+    @keyframes fadeUp {
+      from { transform: translateY(8px); opacity: 0; }
+      to   { transform: translateY(0); opacity: 1; }
+    }
+
+    /* SPINNER */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid #E0DFDB;
+      border-top-color: #1A1A1A;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin: 60px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      .detail-layout { grid-template-columns: 1fr; }
+      .detail-card { position: static; }
+      .form-row { grid-template-columns: 1fr; }
+      .container { padding: 16px; }
+      .header { padding: 0 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="view-login">
+  <div class="login-card">
+    <h1>Dev Tracker</h1>
+    <p class="subtitle">Design development tracking</p>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-pw" placeholder="Enter team password" />
+    </div>
+    <button class="btn btn-primary btn-full" onclick="login()">Sign In</button>
+    <p class="login-error" id="login-error">Incorrect password. Try again.</p>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="view-dashboard" class="hidden">
+  <div class="header">
+    <span class="header-logo">Dev Tracker</span>
+    <button class="btn btn-white btn-sm" onclick="openStyleModal()">+ Add Style</button>
+  </div>
+  <div class="container">
+    <div class="dashboard-header">
+      <div>
+        <div class="dashboard-title">All Styles</div>
+        <div class="style-count" id="style-count"></div>
+      </div>
+    </div>
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+      <button class="filter-btn" onclick="setFilter('Womens', this)">Women's</button>
+      <button class="filter-btn" onclick="setFilter('Mens', this)">Men's</button>
+      <button class="filter-btn" onclick="setFilter('In Sampling', this)">In Sampling</button>
+      <button class="filter-btn" onclick="setFilter('Sample Received', this)">Sample Received</button>
+      <button class="filter-btn" onclick="setFilter('Approved', this)">Approved</button>
+    </div>
+    <div id="styles-grid" class="styles-grid">
+      <div class="empty-state"><div class="spinner"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL -->
+<div id="view-detail" class="hidden">
+  <div class="header">
+    <span class="header-logo">Dev Tracker</span>
+    <button class="btn btn-white btn-sm" onclick="showView('dashboard')">Back to All Styles</button>
+  </div>
+  <div class="container">
+    <div class="detail-layout">
+      <!-- LEFT: Style info -->
+      <div>
+        <div class="detail-card">
+          <div class="detail-image" id="detail-img-wrap">
+            <span style="color:#CCC;font-size:13px">No image</span>
+          </div>
+          <div class="detail-info">
+            <div class="detail-name" id="detail-name"></div>
+            <div class="detail-number" id="detail-number"></div>
+            <div class="detail-meta">
+              <div class="detail-row">
+                <span class="detail-label">Gender</span>
+                <span id="detail-gender"></span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Date Passed</span>
+                <span class="detail-value" id="detail-date"></span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Status</span>
+                <span id="detail-status"></span>
+              </div>
+            </div>
+            <div class="detail-notes hidden" id="detail-notes"></div>
+          </div>
+          <div class="detail-actions">
+            <button class="btn btn-secondary btn-sm" onclick="openStyleModal(currentStyle)">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmDeleteStyle()">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Quotes -->
+      <div>
+        <div class="section-header">
+          <div class="section-title">Factory Quotes</div>
+          <button class="btn btn-primary btn-sm" onclick="openQuoteModal()">+ Add Quote</button>
+        </div>
+        <div id="quotes-grid" class="quotes-grid">
+          <div class="no-quotes">Loading quotes...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STYLE MODAL -->
+<div id="modal-style" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="style-modal-title">Add Style</div>
+      <button class="modal-close" onclick="closeModal('modal-style')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="style-id" />
+      <div class="form-row">
+        <div class="form-group">
+          <label>Style Name *</label>
+          <input type="text" id="style-name" placeholder="e.g. Mini Tote" />
+        </div>
+        <div class="form-group">
+          <label>Style Number</label>
+          <input type="text" id="style-number" placeholder="e.g. HB-001" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Gender *</label>
+          <select id="style-gender">
+            <option value="">Select...</option>
+            <option value="Womens">Women's</option>
+            <option value="Mens">Men's</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date Passed</label>
+          <input type="date" id="style-date" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="style-status">
+          <option>Spec Ready</option>
+          <option>Passed to Factory</option>
+          <option>In Sampling</option>
+          <option>Sample ETA Confirmed</option>
+          <option>Sample Received</option>
+          <option>Revision Requested</option>
+          <option>Approved</option>
+          <option>Cancelled</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="style-notes" placeholder="Construction details, materials, special instructions..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Spec / Product Image</label>
+        <div class="upload-area" id="upload-area" onclick="document.getElementById('img-input').click()">
+          <div class="upload-icon">+</div>
+          <div class="upload-text"><strong>Click to upload</strong> a spec or product photo</div>
+          <input type="file" id="img-input" accept="image/*" style="display:none" onchange="handleImageSelect(this)" />
+        </div>
+        <div class="image-preview-wrap hidden" id="preview-wrap">
+          <img id="img-preview" src="" alt="Preview" />
+          <button class="remove-image" onclick="removeImage(event)">&times;</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-style')">Cancel</button>
+      <button class="btn btn-primary" id="save-style-btn" onclick="saveStyle()">Save Style</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUOTE MODAL -->
+<div id="modal-quote" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="quote-modal-title">Add Factory Quote</div>
+      <button class="modal-close" onclick="closeModal('modal-quote')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="quote-id" />
+      <div class="form-row">
+        <div class="form-group">
+          <label>Factory Name *</label>
+          <input type="text" id="quote-factory" placeholder="e.g. Sunrise Leather Co." />
+        </div>
+        <div class="form-group">
+          <label>Contact Name</label>
+          <input type="text" id="quote-contact" placeholder="e.g. Linda Chen" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date Sent</label>
+          <input type="date" id="quote-sent" />
+        </div>
+        <div class="form-group">
+          <label>Sample ETA</label>
+          <input type="date" id="quote-eta" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>FOB Price (USD)</label>
+          <input type="number" id="quote-fob" placeholder="0.00" step="0.01" min="0" />
+        </div>
+        <div class="form-group">
+          <label>DDP Price (USD)</label>
+          <input type="number" id="quote-ddp" placeholder="0.00" step="0.01" min="0" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="quote-notes" placeholder="MOQ, lead time, materials, revision notes..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-quote')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveQuote()">Save Quote</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // CONFIG
+  const SUPABASE_URL = 'https://eiykvjfutqdrvwsymdtx.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_cD0TuUoyW910GvfW8pmaVg_IDbnRBSC';
+  const PASSWORD     = 'JWmobile';
+  const BUCKET       = 'spec-images';
+
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // STATE
+  let allStyles      = [];
+  let currentFilter  = 'all';
+  let currentStyle   = null;
+  let currentQuotes  = [];
+  let pendingFile    = null;
+  let existingImgUrl = null;
+
+  // AUTH
+  function login() {
+    const val = document.getElementById('login-pw').value;
+    if (val === PASSWORD) {
+      sessionStorage.setItem('auth', '1');
+      showView('dashboard');
+      loadStyles();
+    } else {
+      document.getElementById('login-error').style.display = 'block';
+    }
+  }
+  document.getElementById('login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+  // VIEWS
+  function showView(v) {
+    ['login','dashboard','detail'].forEach(x =>
+      document.getElementById('view-' + x).classList.add('hidden')
+    );
+    document.getElementById('view-' + v).classList.remove('hidden');
+    window.scrollTo(0, 0);
+  }
+
+  // TOAST
+  function toast(msg, type) {
+    const el = document.createElement('div');
+    el.className = 'toast' + (type ? ' ' + type : '');
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
+
+  // BADGE HELPERS
+  const STATUS_CLASS = {
+    'Spec Ready':            'badge-spec-ready',
+    'Passed to Factory':     'badge-passed',
+    'In Sampling':           'badge-sampling',
+    'Sample ETA Confirmed':  'badge-eta',
+    'Sample Received':       'badge-received',
+    'Revision Requested':    'badge-revision',
+    'Approved':              'badge-approved',
+    'Cancelled':             'badge-cancelled',
+  };
+
+  function statusBadge(s) {
+    return `<span class="badge ${STATUS_CLASS[s] || 'badge-spec-ready'}">${s}</span>`;
+  }
+  function genderBadge(g) {
+    return g === 'Womens'
+      ? `<span class="badge badge-womens">Women's</span>`
+      : `<span class="badge badge-mens">Men's</span>`;
+  }
+  function fmtDate(d) {
+    if (!d) return 'Not set';
+    const [y, m, day] = d.split('-');
+    return `${m}/${day}/${y}`;
+  }
+  function fmtPrice(p) {
+    if (!p && p !== 0) return '—';
+    return '$' + parseFloat(p).toFixed(2);
+  }
+
+  // LOAD STYLES
+  async function loadStyles() {
+    const { data, error } = await db.from('styles').select('*').order('created_at', { ascending: false });
+    if (error) { toast('Error loading styles', 'error'); return; }
+    allStyles = data || [];
+    renderDashboard();
+  }
+
+  function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderDashboard();
+  }
+
+  function renderDashboard() {
+    const grid = document.getElementById('styles-grid');
+    let list = allStyles;
+    if (currentFilter !== 'all') {
+      list = allStyles.filter(s => s.gender === currentFilter || s.status === currentFilter);
+    }
+
+    const count = document.getElementById('style-count');
+    count.textContent = list.length === 1 ? '1 style' : `${list.length} styles`;
+
+    if (!list.length) {
+      grid.innerHTML = `<div class="empty-state">
+        <h3>No styles found</h3>
+        <p>${currentFilter === 'all' ? 'Click "+ Add Style" to get started.' : 'No styles match this filter.'}</p>
+      </div>`;
+      return;
+    }
+
+    grid.innerHTML = list.map(s => `
+      <div class="style-card" onclick="openDetail('${s.id}')">
+        <div class="style-card-image">
+          ${s.spec_image_url
+            ? `<img src="${s.spec_image_url}" alt="${esc(s.style_name)}" loading="lazy" />`
+            : `<span class="no-image-placeholder">No image</span>`}
+        </div>
+        <div class="style-card-body">
+          <div class="style-card-name">${esc(s.style_name)}</div>
+          ${s.style_number ? `<div class="style-card-number">${esc(s.style_number)}</div>` : ''}
+          <div class="style-card-meta">
+            ${genderBadge(s.gender)}
+            ${statusBadge(s.status)}
+          </div>
+          ${s.date_passed ? `<div class="style-card-date">Passed ${fmtDate(s.date_passed)}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // DETAIL
+  async function openDetail(id) {
+    const s = allStyles.find(x => x.id === id);
+    if (!s) return;
+    currentStyle = s;
+
+    document.getElementById('detail-name').textContent = s.style_name;
+    document.getElementById('detail-number').textContent = s.style_number || '';
+    document.getElementById('detail-gender').innerHTML = genderBadge(s.gender);
+    document.getElementById('detail-date').textContent = fmtDate(s.date_passed);
+    document.getElementById('detail-status').innerHTML = statusBadge(s.status);
+
+    const notesEl = document.getElementById('detail-notes');
+    if (s.notes) {
+      notesEl.textContent = s.notes;
+      notesEl.classList.remove('hidden');
+    } else {
+      notesEl.classList.add('hidden');
+    }
+
+    const imgWrap = document.getElementById('detail-img-wrap');
+    imgWrap.innerHTML = s.spec_image_url
+      ? `<img src="${s.spec_image_url}" alt="${esc(s.style_name)}" style="width:100%;height:100%;object-fit:cover" />`
+      : `<span style="color:#CCC;font-size:13px">No image</span>`;
+
+    showView('detail');
+    await loadQuotes(id);
+  }
+
+  async function loadQuotes(styleId) {
+    document.getElementById('quotes-grid').innerHTML = '<div class="no-quotes"><div class="spinner"></div></div>';
+    const { data, error } = await db.from('quotes').select('*').eq('style_id', styleId).order('created_at');
+    if (error) { toast('Error loading quotes', 'error'); return; }
+    currentQuotes = data || [];
+    renderQuotes();
+  }
+
+  function renderQuotes() {
+    const grid = document.getElementById('quotes-grid');
+    if (!currentQuotes.length) {
+      grid.innerHTML = `<div class="no-quotes">No factory quotes yet. Add one to start comparing.</div>`;
+      return;
+    }
+    grid.innerHTML = currentQuotes.map(q => `
+      <div class="quote-card">
+        <div class="quote-factory">${esc(q.factory_name)}</div>
+        <div class="quote-contact">${q.factory_contact ? esc(q.factory_contact) : ''}</div>
+        <div class="quote-prices">
+          <div class="price-block">
+            <div class="price-label">FOB</div>
+            <div class="price-value">${fmtPrice(q.fob_price)}</div>
+          </div>
+          <div class="price-block">
+            <div class="price-label">DDP</div>
+            <div class="price-value">${fmtPrice(q.ddp_price)}</div>
+          </div>
+        </div>
+        <div class="quote-fields">
+          <div class="quote-field">
+            <span class="quote-field-label">Date Sent</span>
+            <span class="quote-field-value">${fmtDate(q.date_sent)}</span>
+          </div>
+          <div class="quote-field">
+            <span class="quote-field-label">Sample ETA</span>
+            <span class="quote-field-value">${fmtDate(q.sample_eta)}</span>
+          </div>
+        </div>
+        ${q.notes ? `<div class="quote-notes">${esc(q.notes)}</div>` : ''}
+        <div class="quote-actions">
+          <button class="btn btn-secondary btn-sm" onclick="openQuoteModal('${q.id}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="confirmDeleteQuote('${q.id}')">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // STYLE MODAL
+  function openStyleModal(style) {
+    pendingFile    = null;
+    existingImgUrl = style ? style.spec_image_url : null;
+
+    document.getElementById('style-id').value     = style ? style.id : '';
+    document.getElementById('style-modal-title').textContent = style ? 'Edit Style' : 'Add Style';
+    document.getElementById('style-name').value   = style ? style.style_name : '';
+    document.getElementById('style-number').value = style ? (style.style_number || '') : '';
+    document.getElementById('style-gender').value = style ? style.gender : '';
+    document.getElementById('style-date').value   = style ? (style.date_passed || '') : '';
+    document.getElementById('style-status').value = style ? style.status : 'Spec Ready';
+    document.getElementById('style-notes').value  = style ? (style.notes || '') : '';
+    document.getElementById('img-input').value    = '';
+
+    const previewWrap = document.getElementById('preview-wrap');
+    const uploadArea  = document.getElementById('upload-area');
+    if (style && style.spec_image_url) {
+      document.getElementById('img-preview').src = style.spec_image_url;
+      previewWrap.classList.remove('hidden');
+      uploadArea.classList.add('hidden');
+    } else {
+      previewWrap.classList.add('hidden');
+      uploadArea.classList.remove('hidden');
+    }
+
+    document.getElementById('modal-style').classList.remove('hidden');
+  }
+
+  function handleImageSelect(input) {
+    if (!input.files || !input.files[0]) return;
+    pendingFile = input.files[0];
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('img-preview').src = e.target.result;
+      document.getElementById('preview-wrap').classList.remove('hidden');
+      document.getElementById('upload-area').classList.add('hidden');
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+
+  function removeImage(e) {
+    e.stopPropagation();
+    pendingFile    = null;
+    existingImgUrl = null;
+    document.getElementById('img-input').value = '';
+    document.getElementById('img-preview').src = '';
+    document.getElementById('preview-wrap').classList.add('hidden');
+    document.getElementById('upload-area').classList.remove('hidden');
+  }
+
+  async function saveStyle() {
+    const name   = document.getElementById('style-name').value.trim();
+    const gender = document.getElementById('style-gender').value;
+    if (!name)   { toast('Style name is required', 'error'); return; }
+    if (!gender) { toast('Please select a gender line', 'error'); return; }
+
+    const btn = document.getElementById('save-style-btn');
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+
+    let imageUrl = existingImgUrl;
+
+    if (pendingFile) {
+      const ext  = pendingFile.name.split('.').pop();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await db.storage.from(BUCKET).upload(path, pendingFile, { upsert: true });
+      if (upErr) { toast('Image upload failed: ' + upErr.message, 'error'); btn.textContent = 'Save Style'; btn.disabled = false; return; }
+      const { data: urlData } = db.storage.from(BUCKET).getPublicUrl(path);
+      imageUrl = urlData.publicUrl;
+    }
+
+    const payload = {
+      style_name:    name,
+      style_number:  document.getElementById('style-number').value.trim() || null,
+      gender,
+      date_passed:   document.getElementById('style-date').value || null,
+      status:        document.getElementById('style-status').value,
+      notes:         document.getElementById('style-notes').value.trim() || null,
+      spec_image_url: imageUrl,
+    };
+
+    const id = document.getElementById('style-id').value;
+    let error;
+    if (id) {
+      ({ error } = await db.from('styles').update(payload).eq('id', id));
+    } else {
+      ({ error } = await db.from('styles').insert(payload));
+    }
+
+    btn.textContent = 'Save Style';
+    btn.disabled = false;
+
+    if (error) { toast('Error: ' + error.message, 'error'); return; }
+
+    toast(id ? 'Style updated' : 'Style added');
+    closeModal('modal-style');
+    await loadStyles();
+
+    if (id && currentStyle && currentStyle.id === id) {
+      currentStyle = { ...currentStyle, ...payload };
+      await openDetail(id);
+    }
+  }
+
+  function confirmDeleteStyle() {
+    if (!currentStyle) return;
+    if (confirm(`Delete "${currentStyle.style_name}"?\n\nThis will also delete all factory quotes for this style.`)) {
+      deleteStyle();
+    }
+  }
+
+  async function deleteStyle() {
+    const { error } = await db.from('styles').delete().eq('id', currentStyle.id);
+    if (error) { toast('Error deleting style', 'error'); return; }
+    toast('Style deleted');
+    currentStyle = null;
+    showView('dashboard');
+    await loadStyles();
+  }
+
+  // QUOTE MODAL
+  function openQuoteModal(quoteId) {
+    const q = quoteId ? currentQuotes.find(x => x.id === quoteId) : null;
+    document.getElementById('quote-id').value      = q ? q.id : '';
+    document.getElementById('quote-modal-title').textContent = q ? 'Edit Quote' : 'Add Factory Quote';
+    document.getElementById('quote-factory').value = q ? q.factory_name : '';
+    document.getElementById('quote-contact').value = q ? (q.factory_contact || '') : '';
+    document.getElementById('quote-sent').value    = q ? (q.date_sent || '') : '';
+    document.getElementById('quote-eta').value     = q ? (q.sample_eta || '') : '';
+    document.getElementById('quote-fob').value     = q ? (q.fob_price || '') : '';
+    document.getElementById('quote-ddp').value     = q ? (q.ddp_price || '') : '';
+    document.getElementById('quote-notes').value   = q ? (q.notes || '') : '';
+    document.getElementById('modal-quote').classList.remove('hidden');
+  }
+
+  async function saveQuote() {
+    const factory = document.getElementById('quote-factory').value.trim();
+    if (!factory) { toast('Factory name is required', 'error'); return; }
+
+    const payload = {
+      style_id:        currentStyle.id,
+      factory_name:    factory,
+      factory_contact: document.getElementById('quote-contact').value.trim() || null,
+      date_sent:       document.getElementById('quote-sent').value || null,
+      sample_eta:      document.getElementById('quote-eta').value || null,
+      fob_price:       document.getElementById('quote-fob').value || null,
+      ddp_price:       document.getElementById('quote-ddp').value || null,
+      notes:           document.getElementById('quote-notes').value.trim() || null,
+    };
+
+    const id = document.getElementById('quote-id').value;
+    let error;
+    if (id) {
+      ({ error } = await db.from('quotes').update(payload).eq('id', id));
+    } else {
+      ({ error } = await db.from('quotes').insert(payload));
+    }
+
+    if (error) { toast('Error: ' + error.message, 'error'); return; }
+    toast(id ? 'Quote updated' : 'Quote added');
+    closeModal('modal-quote');
+    await loadQuotes(currentStyle.id);
+  }
+
+  function confirmDeleteQuote(id) {
+    if (confirm('Delete this factory quote?')) deleteQuote(id);
+  }
+
+  async function deleteQuote(id) {
+    const { error } = await db.from('quotes').delete().eq('id', id);
+    if (error) { toast('Error deleting quote', 'error'); return; }
+    toast('Quote deleted');
+    await loadQuotes(currentStyle.id);
+  }
+
+  // UTILS
+  function esc(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+    pendingFile = null;
+  }
+
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.add('hidden'); });
+  });
+
+  // INIT
+  if (sessionStorage.getItem('auth') === '1') {
+    showView('dashboard');
+    loadStyles();
+  }
+</script>
+</body>
+</html>
