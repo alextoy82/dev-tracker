@@ -183,6 +183,43 @@
     .badge-womens        { background: #FCE7F3; color: #9D174D; }
     .badge-mens          { background: #DBEAFE; color: #1E40AF; }
 
+    /* ETA PANEL */
+    .eta-toggle-btn {
+      width: 100%;
+      padding: 7px;
+      border-radius: 8px;
+      border: 1px solid #E0DFDB;
+      background: white;
+      font-size: 12px;
+      font-weight: 500;
+      color: #6B6B6B;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .eta-toggle-btn:hover, .eta-toggle-btn.active {
+      background: #1A1A1A;
+      color: white;
+      border-color: #1A1A1A;
+    }
+    .eta-panel {
+      margin-top: 8px;
+      border: 1px solid #E0DFDB;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .eta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      font-size: 13px;
+      border-bottom: 1px solid #F0EFEB;
+    }
+    .eta-row:last-child { border-bottom: none; }
+    .eta-factory { color: #444; font-weight: 500; }
+    .eta-date { color: #1A1A1A; font-weight: 600; }
+
     /* EMPTY STATE */
     .empty-state {
       grid-column: 1 / -1;
@@ -465,19 +502,8 @@
         <div class="style-count" id="style-count"></div>
       </div>
     </div>
-    <div style="margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
-      <input type="text" id="search-input" placeholder="Search by style name or number..." oninput="renderDashboard()" style="max-width:300px" />
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <div>
-          <label style="font-size:12px;color:#6B6B6B;margin-bottom:4px;display:block">ETA From</label>
-          <input type="date" id="eta-from" onchange="renderDashboard()" style="width:160px" />
-        </div>
-        <div>
-          <label style="font-size:12px;color:#6B6B6B;margin-bottom:4px;display:block">ETA To</label>
-          <input type="date" id="eta-to" onchange="renderDashboard()" style="width:160px" />
-        </div>
-        <button class="btn btn-secondary btn-sm" style="margin-top:18px" onclick="clearETA()">Clear</button>
-      </div>
+    <div style="margin-bottom:16px">
+      <input type="text" id="search-input" placeholder="Search by style name or number..." oninput="renderDashboard()" style="max-width:360px" />
     </div>
     <div class="filters">
       <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
@@ -760,10 +786,12 @@
     renderDashboard();
   }
 
-  function clearETA() {
-    document.getElementById('eta-from').value = '';
-    document.getElementById('eta-to').value = '';
-    renderDashboard();
+  function toggleETA(id, btn) {
+    event.stopPropagation();
+    const panel = document.getElementById('eta-panel-' + id);
+    const open = !panel.classList.contains('hidden');
+    panel.classList.toggle('hidden');
+    btn.classList.toggle('active', !open);
   }
 
   function setFilter(f, btn) {
@@ -775,9 +803,7 @@
 
   function renderDashboard() {
     const grid = document.getElementById('styles-grid');
-    const query   = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
-    const etaFrom = document.getElementById('eta-from')?.value || '';
-    const etaTo   = document.getElementById('eta-to')?.value || '';
+    const query = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
 
     let list = allStyles;
     if (currentFilter !== 'all') {
@@ -788,16 +814,6 @@
         s.style_name.toLowerCase().includes(query) ||
         (s.style_number && s.style_number.toLowerCase().includes(query))
       );
-    }
-    if (etaFrom || etaTo) {
-      list = list.filter(s => {
-        const quotes = allQuotesCache.filter(q => q.style_id === s.id && q.sample_eta);
-        return quotes.some(q => {
-          if (etaFrom && q.sample_eta < etaFrom) return false;
-          if (etaTo   && q.sample_eta > etaTo)   return false;
-          return true;
-        });
-      });
     }
 
     const count = document.getElementById('style-count');
@@ -811,24 +827,41 @@
       return;
     }
 
-    grid.innerHTML = list.map(s => `
-      <div class="style-card" onclick="openDetail('${s.id}')">
-        <div class="style-card-image">
-          ${s.spec_image_url
-            ? `<img src="${s.spec_image_url}" alt="${esc(s.style_name)}" loading="lazy" />`
-            : `<span class="no-image-placeholder">No image</span>`}
-        </div>
-        <div class="style-card-body">
-          <div class="style-card-name">${esc(s.style_name)}</div>
-          ${s.style_number ? `<div class="style-card-number">${esc(s.style_number)}</div>` : ''}
-          <div class="style-card-meta">
-            ${genderBadge(s.gender)}
-            ${statusBadge(s.status)}
+    grid.innerHTML = list.map(s => {
+      const quotes = allQuotesCache.filter(q => q.style_id === s.id && q.sample_eta);
+      const hasETAs = quotes.length > 0;
+      return `
+      <div class="style-card" id="card-${s.id}">
+        <div onclick="openDetail('${s.id}')">
+          <div class="style-card-image">
+            ${s.spec_image_url
+              ? `<img src="${s.spec_image_url}" alt="${esc(s.style_name)}" loading="lazy" />`
+              : `<span class="no-image-placeholder">No image</span>`}
           </div>
-          ${s.date_passed ? `<div class="style-card-date">Passed ${fmtDate(s.date_passed)}</div>` : ''}
+          <div class="style-card-body">
+            <div class="style-card-name">${esc(s.style_name)}</div>
+            ${s.style_number ? `<div class="style-card-number">${esc(s.style_number)}</div>` : ''}
+            <div class="style-card-meta">
+              ${genderBadge(s.gender)}
+              ${statusBadge(s.status)}
+            </div>
+            ${s.date_passed ? `<div class="style-card-date">Passed ${fmtDate(s.date_passed)}</div>` : ''}
+          </div>
         </div>
+        ${hasETAs ? `
+        <div style="padding:0 16px 12px">
+          <button class="eta-toggle-btn" onclick="toggleETA('${s.id}', this)">Sample ETA</button>
+          <div class="eta-panel hidden" id="eta-panel-${s.id}">
+            ${quotes.map(q => `
+              <div class="eta-row">
+                <span class="eta-factory">${esc(q.factory_name)}</span>
+                <span class="eta-date">${fmtDate(q.sample_eta)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>` : ''}
       </div>
-    `).join('');
+    `}).join('');
   }
 
   // DETAIL
