@@ -453,7 +453,10 @@
 <div id="view-dashboard" class="hidden">
   <div class="header">
     <span class="header-logo">Dev Tracker</span>
-    <button class="btn btn-white btn-sm" onclick="openStyleModal()">+ Add Style</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-white btn-sm" onclick="exportCSV()">Export CSV</button>
+      <button class="btn btn-white btn-sm" onclick="openStyleModal()">+ Add Style</button>
+    </div>
   </div>
   <div class="container">
     <div class="dashboard-header">
@@ -1042,6 +1045,47 @@
     if (error) { toast('Error deleting quote', 'error'); return; }
     toast('Quote deleted');
     await loadQuotes(currentStyle.id);
+  }
+
+  // EXPORT
+  async function exportCSV() {
+    toast('Preparing export...');
+    const { data: quotes } = await db.from('quotes').select('*');
+    const allQuotes = quotes || [];
+
+    const rows = [
+      ['Style Name','Style Number','Gender','Date Passed','Status','Notes','Factory','Contact','Date Sent','Sample ETA','FOB (USD)','DDP (USD)','Factory Notes']
+    ];
+
+    for (const s of allStyles) {
+      const styleQuotes = allQuotes.filter(q => q.style_id === s.id);
+      if (styleQuotes.length === 0) {
+        rows.push([s.style_name, s.style_number||'', s.gender==='Womens'?"Women's":"Men's", s.date_passed||'', s.status, s.notes||'', '','','','','','','']);
+      } else {
+        styleQuotes.forEach((q, i) => {
+          rows.push([
+            i === 0 ? s.style_name : '',
+            i === 0 ? (s.style_number||'') : '',
+            i === 0 ? (s.gender==='Womens'?"Women's":"Men's") : '',
+            i === 0 ? (s.date_passed||'') : '',
+            i === 0 ? s.status : '',
+            i === 0 ? (s.notes||'') : '',
+            q.factory_name, q.factory_contact||'', q.date_sent||'', q.sample_eta||'',
+            q.fob_price||'', q.ddp_price||'', q.notes||''
+          ]);
+        });
+      }
+    }
+
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dev-tracker-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Exported');
   }
 
   // UTILS
