@@ -610,7 +610,6 @@
       <div class="form-group">
         <label>Status</label>
         <select id="style-status">
-          <option>Spec Ready</option>
           <option>In Sampling</option>
           <option>Sample ETA Confirmed</option>
           <option>Sample Received</option>
@@ -745,7 +744,6 @@
 
   // BADGE HELPERS
   const STATUS_CLASS = {
-    'Spec Ready':            'badge-spec-ready',
     'In Sampling':           'badge-sampling',
     'Sample ETA Confirmed':  'badge-eta',
     'Sample Received':       'badge-received',
@@ -778,7 +776,7 @@
   async function loadStyles() {
     const [stylesRes, quotesRes] = await Promise.all([
       db.from('styles').select('*').order('created_at', { ascending: false }),
-      db.from('quotes').select('style_id, sample_eta')
+      db.from('quotes').select('style_id, factory_name, sample_eta')
     ]);
     if (stylesRes.error) { toast('Error loading styles', 'error'); return; }
     allStyles = stylesRes.data || [];
