@@ -370,6 +370,7 @@
     .qty-price-table tr:last-child td { border-bottom: none; }
     .qty-price-table td:first-child { font-weight: 600; color: #444; width: 36px; }
     .quote-country { font-size: 12px; color: #6B6B6B; margin-bottom: 12px; }
+    .costing-block + .costing-block { margin-top: 12px; padding-top: 12px; border-top: 1px solid #E0DFDB; }
     /* PRICE GRID IN MODAL */
     .price-grid-wrap { border: 1px solid #E0DFDB; border-radius: 8px; overflow: hidden; }
     .price-grid-wrap table { width: 100%; border-collapse: collapse; }
@@ -748,23 +749,13 @@
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Country</label>
-          <select id="quote-country">
-            <option value="">Select...</option>
-            <option value="China">China</option>
-            <option value="Myanmar">Myanmar</option>
-            <option value="Thailand">Thailand</option>
-            <option value="Cambodia">Cambodia</option>
-          </select>
-        </div>
-        <div class="form-group">
           <label>Date Sent</label>
           <input type="date" id="quote-sent" />
         </div>
-      </div>
-      <div class="form-group">
-        <label>Sample ETA</label>
-        <input type="date" id="quote-eta" />
+        <div class="form-group">
+          <label>Sample ETA</label>
+          <input type="date" id="quote-eta" />
+        </div>
       </div>
       <div class="form-group">
         <div class="toggle-row">
@@ -779,20 +770,11 @@
         </div>
       </div>
       <div class="form-group">
-        <label>Pricing by QTY (USD)</label>
-        <div class="price-grid-wrap">
-          <table>
-            <thead><tr><th>QTY</th><th>FOB</th><th>DDP</th></tr></thead>
-            <tbody>
-              <tr><td>5K</td><td><input type="number" id="quote-fob-5k" placeholder="0.00" step="0.01" min="0" /></td><td><input type="number" id="quote-ddp-5k" placeholder="0.00" step="0.01" min="0" /></td></tr>
-              <tr><td>10K</td><td><input type="number" id="quote-fob-10k" placeholder="0.00" step="0.01" min="0" /></td><td><input type="number" id="quote-ddp-10k" placeholder="0.00" step="0.01" min="0" /></td></tr>
-              <tr><td>15K</td><td><input type="number" id="quote-fob-15k" placeholder="0.00" step="0.01" min="0" /></td><td><input type="number" id="quote-ddp-15k" placeholder="0.00" step="0.01" min="0" /></td></tr>
-              <tr><td>20K</td><td><input type="number" id="quote-fob-20k" placeholder="0.00" step="0.01" min="0" /></td><td><input type="number" id="quote-ddp-20k" placeholder="0.00" step="0.01" min="0" /></td></tr>
-              <tr><td>25K</td><td><input type="number" id="quote-fob-25k" placeholder="0.00" step="0.01" min="0" /></td><td><input type="number" id="quote-ddp-25k" placeholder="0.00" step="0.01" min="0" /></td></tr>
-              <tr><td>30K</td><td><input type="number" id="quote-fob-30k" placeholder="0.00" step="0.01" min="0" /></td><td><input type="number" id="quote-ddp-30k" placeholder="0.00" step="0.01" min="0" /></td></tr>
-            </tbody>
-          </table>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <label style="margin:0">Pricing by Country (USD)</label>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addCosting()">+ Add Country</button>
         </div>
+        <div id="costings-container"></div>
       </div>
       <div class="form-group">
         <label>Notes</label>
@@ -823,8 +805,9 @@
   let viewMode       = 'grid';
   let currentStyle   = null;
   let currentQuotes  = [];
-  let pendingFile    = null;
-  let existingImgUrl = null;
+  let pendingFile      = null;
+  let existingImgUrl   = null;
+  let pendingCostings  = [];
 
   // AUTH
   function login() {
@@ -1054,25 +1037,27 @@
       return;
     }
     grid.innerHTML = currentQuotes.map(q => {
-      const pricedTiers = QTYS.filter(qty => q[`fob_${qty}`] || q[`ddp_${qty}`]);
-      const priceTable = pricedTiers.length ? `
-        <table class="qty-price-table">
-          <thead><tr><th>QTY</th><th>FOB</th><th>DDP</th></tr></thead>
-          <tbody>
-            ${pricedTiers.map(qty => `<tr>
+      const costings = (q.costings && q.costings.length) ? q.costings
+        : (q.country ? [Object.assign({country:q.country}, Object.fromEntries(QTYS.flatMap(qty => [['fob_'+qty, q['fob_'+qty]], ['ddp_'+qty, q['ddp_'+qty]]])))] : []);
+      const priceTable = costings.map(c => {
+        const pricedTiers = QTYS.filter(qty => c['fob_'+qty] || c['ddp_'+qty]);
+        return `
+          ${c.country ? `<div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px">${esc(c.country)}</div>` : ''}
+          ${pricedTiers.length ? `<table class="qty-price-table" style="margin-bottom:10px">
+            <thead><tr><th>QTY</th><th>FOB</th><th>DDP</th></tr></thead>
+            <tbody>${pricedTiers.map(qty => `<tr>
               <td>${qty.toUpperCase()}</td>
-              <td>${q[`fob_${qty}`] ? '$'+parseFloat(q[`fob_${qty}`]).toFixed(2) : '—'}</td>
-              <td>${q[`ddp_${qty}`] ? '$'+parseFloat(q[`ddp_${qty}`]).toFixed(2) : '—'}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>` : '';
+              <td>${c['fob_'+qty] ? '$'+parseFloat(c['fob_'+qty]).toFixed(2) : '—'}</td>
+              <td>${c['ddp_'+qty] ? '$'+parseFloat(c['ddp_'+qty]).toFixed(2) : '—'}</td>
+            </tr>`).join('')}</tbody>
+          </table>` : ''}`;
+      }).join('');
       return `
       <div class="quote-card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
             <div class="quote-factory">${esc(q.factory_name)}</div>
             <div class="quote-contact">${q.factory_contact ? esc(q.factory_contact) : ''}</div>
-            ${q.country ? `<div class="quote-country">${esc(q.country)}</div>` : ''}
           </div>
           ${q.is_sampling ? `<span class="badge badge-sampling-on">Sampling</span>` : ''}
         </div>
@@ -1217,6 +1202,60 @@
     await loadStyles();
   }
 
+  // COSTING HELPERS
+  const COUNTRIES = ['China','Myanmar','Thailand','Cambodia'];
+
+  function renderCostings() {
+    const container = document.getElementById('costings-container');
+    if (!container) return;
+    container.innerHTML = pendingCostings.map((c, i) => `
+      <div class="costing-block">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <select class="costing-country" style="padding:7px 12px;border:1px solid #E0DFDB;border-radius:8px;font-size:14px;font-family:inherit;background:white;appearance:none;color:#1A1A1A">
+            <option value="">Select country...</option>
+            ${COUNTRIES.map(cn => `<option value="${cn}" ${c.country===cn?'selected':''}>${cn}</option>`).join('')}
+          </select>
+          ${pendingCostings.length > 1 ? `<button type="button" class="btn btn-danger btn-sm" onclick="removeCosting(${i})">Remove</button>` : ''}
+        </div>
+        <div class="price-grid-wrap">
+          <table>
+            <thead><tr><th>QTY</th><th>FOB</th><th>DDP</th></tr></thead>
+            <tbody>
+              ${QTYS.map(qty => `<tr>
+                <td>${qty.toUpperCase()}</td>
+                <td><input type="number" placeholder="0.00" step="0.01" min="0" data-fob="${qty}" value="${c['fob_'+qty]||''}" /></td>
+                <td><input type="number" placeholder="0.00" step="0.01" min="0" data-ddp="${qty}" value="${c['ddp_'+qty]||''}" /></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function syncCostingsFromDOM() {
+    document.querySelectorAll('.costing-block').forEach((block, i) => {
+      if (!pendingCostings[i]) return;
+      pendingCostings[i].country = block.querySelector('.costing-country').value;
+      QTYS.forEach(qty => {
+        pendingCostings[i]['fob_'+qty] = block.querySelector(`[data-fob="${qty}"]`).value;
+        pendingCostings[i]['ddp_'+qty] = block.querySelector(`[data-ddp="${qty}"]`).value;
+      });
+    });
+  }
+
+  function addCosting() {
+    syncCostingsFromDOM();
+    pendingCostings.push({ country: '' });
+    renderCostings();
+  }
+
+  function removeCosting(i) {
+    syncCostingsFromDOM();
+    pendingCostings.splice(i, 1);
+    renderCostings();
+  }
+
   // QUOTE MODAL
   function openQuoteModal(quoteId) {
     const q = quoteId ? currentQuotes.find(x => x.id === quoteId) : null;
@@ -1224,14 +1263,19 @@
     document.getElementById('quote-modal-title').textContent = q ? 'Edit Quote' : 'Add Factory Quote';
     document.getElementById('quote-factory').value = q ? q.factory_name : '';
     document.getElementById('quote-contact').value = q ? (q.factory_contact || '') : '';
-    document.getElementById('quote-country').value   = q ? (q.country || '') : '';
-    document.getElementById('quote-sent').value      = q ? (q.date_sent || '') : '';
-    document.getElementById('quote-eta').value       = q ? (q.sample_eta || '') : '';
+    document.getElementById('quote-sent').value       = q ? (q.date_sent || '') : '';
+    document.getElementById('quote-eta').value        = q ? (q.sample_eta || '') : '';
     document.getElementById('quote-sampling').checked = q ? !!q.is_sampling : false;
-    QTYS.forEach(qty => {
-      document.getElementById(`quote-fob-${qty}`).value = q ? (q[`fob_${qty}`] || '') : '';
-      document.getElementById(`quote-ddp-${qty}`).value = q ? (q[`ddp_${qty}`] || '') : '';
-    });
+    if (q && q.costings && q.costings.length) {
+      pendingCostings = JSON.parse(JSON.stringify(q.costings));
+    } else if (q && q.country) {
+      const c = { country: q.country };
+      QTYS.forEach(qty => { c['fob_'+qty] = q['fob_'+qty] || ''; c['ddp_'+qty] = q['ddp_'+qty] || ''; });
+      pendingCostings = [c];
+    } else {
+      pendingCostings = [{ country: '' }];
+    }
+    renderCostings();
     document.getElementById('quote-notes').value   = q ? (q.notes || '') : '';
     document.getElementById('modal-quote').classList.remove('hidden');
   }
@@ -1244,16 +1288,14 @@
       style_id:        currentStyle.id,
       factory_name:    factory,
       factory_contact: document.getElementById('quote-contact').value.trim() || null,
-      country:         document.getElementById('quote-country').value || null,
       date_sent:       document.getElementById('quote-sent').value || null,
       sample_eta:      document.getElementById('quote-eta').value || null,
       is_sampling:     document.getElementById('quote-sampling').checked,
       notes:           document.getElementById('quote-notes').value.trim() || null,
     };
-    QTYS.forEach(qty => {
-      payload[`fob_${qty}`] = document.getElementById(`quote-fob-${qty}`).value || null;
-      payload[`ddp_${qty}`] = document.getElementById(`quote-ddp-${qty}`).value || null;
-    });
+    syncCostingsFromDOM();
+    payload.costings = pendingCostings.filter(c => c.country || QTYS.some(qty => c['fob_'+qty] || c['ddp_'+qty]));
+    payload.country  = payload.costings[0]?.country || null;
 
     const id = document.getElementById('quote-id').value;
     let error;
@@ -1520,12 +1562,18 @@
     const quoteBlocks = qs.length === 0
       ? `<p style="color:#AAA;font-style:italic">No factory quotes yet.</p>`
       : qs.map(q => {
-          const pricedTiers = QTYS.filter(qty => q[`fob_${qty}`] || q[`ddp_${qty}`]);
-          const priceRows = pricedTiers.map(qty => `<tr>
-            <td>${qty.toUpperCase()}</td>
-            <td>${q[`fob_${qty}`] ? '$'+parseFloat(q[`fob_${qty}`]).toFixed(2) : '—'}</td>
-            <td>${q[`ddp_${qty}`] ? '$'+parseFloat(q[`ddp_${qty}`]).toFixed(2) : '—'}</td>
-          </tr>`).join('');
+          const costings = (q.costings && q.costings.length) ? q.costings
+            : (q.country ? [Object.assign({country:q.country}, Object.fromEntries(QTYS.flatMap(qty => [['fob_'+qty, q['fob_'+qty]], ['ddp_'+qty, q['ddp_'+qty]]])))] : []);
+          const priceRows = costings.map(c => {
+            const pricedTiers = QTYS.filter(qty => c['fob_'+qty] || c['ddp_'+qty]);
+            return `
+              ${c.country ? `<tr style="background:#F8F7F5"><td colspan="3" style="padding:5px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:#555">${esc(c.country)}</td></tr>` : ''}
+              ${pricedTiers.map(qty => `<tr>
+                <td>${qty.toUpperCase()}</td>
+                <td>${c['fob_'+qty] ? '$'+parseFloat(c['fob_'+qty]).toFixed(2) : '—'}</td>
+                <td>${c['ddp_'+qty] ? '$'+parseFloat(c['ddp_'+qty]).toFixed(2) : '—'}</td>
+              </tr>`).join('')}`;
+          }).join('');
           return `<div class="factory-block">
             <div class="factory-header">
               <span class="fh-name">${esc(q.factory_name)}${q.factory_contact ? ' <span class="fh-contact">'+esc(q.factory_contact)+'</span>' : ''}</span>
