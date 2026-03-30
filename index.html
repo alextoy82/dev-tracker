@@ -1298,42 +1298,104 @@
     toast('Preparing PDF...');
     const { data: quotes } = await db.from('quotes').select('*');
     const allQuotes = quotes || [];
+    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const rows = [];
-    for (const s of allStyles) {
-      const styleQuotes = allQuotes.filter(q => q.style_id === s.id);
-      const genderLabel = s.gender === 'Womens' ? "Women's" : "Men's";
-      const datePassed = s.date_passed ? fmtDate(s.date_passed) : '';
-      if (styleQuotes.length === 0) {
-        rows.push(`<tr style="border-top:2px solid #E0DFDB">
-          <td><strong>${esc(s.style_name)}</strong></td>
-          <td>${esc(s.style_number || '')}</td>
-          <td>${genderLabel}</td>
-          <td>${esc(s.status)}</td>
-          <td>${datePassed}</td>
-          <td colspan="4" style="color:#AAA;font-style:italic">No quotes</td>
-        </tr>`);
-      } else {
-        styleQuotes.forEach((q, i) => {
-          const styleInfo = i === 0 ? `
-            <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB"><strong>${esc(s.style_name)}</strong></td>
-            <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB">${esc(s.style_number || '')}</td>
-            <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB">${genderLabel}</td>
-            <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB">${esc(s.status)}</td>
-            <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB">${datePassed}</td>
-          ` : '';
-          rows.push(`<tr style="border-top:${i === 0 ? '2px solid #E0DFDB' : '1px solid #F0EFEB'}">
-            ${styleInfo}
-            <td>${esc(q.factory_name)}</td>
-            <td>${q.fob_price ? '$' + parseFloat(q.fob_price).toFixed(2) : ''}</td>
-            <td>${q.ddp_price ? '$' + parseFloat(q.ddp_price).toFixed(2) : ''}</td>
-            <td>${q.sample_eta ? fmtDate(q.sample_eta) : ''}</td>
+    let html;
+
+    if (viewMode === 'grid') {
+      // Card grid with thumbnails
+      const cards = allStyles.map(s => {
+        const styleQuotes = allQuotes.filter(q => q.style_id === s.id);
+        const etaQuotes = styleQuotes.filter(q => q.sample_eta).sort((a,b) => a.sample_eta.localeCompare(b.sample_eta));
+        const earliestETA = etaQuotes.length ? etaQuotes[0] : null;
+        const genderLabel = s.gender === 'Womens' ? "Women's" : "Men's";
+        const imgHtml = s.spec_image_url
+          ? `<img src="${s.spec_image_url}" class="card-img" />`
+          : `<div class="card-no-img">No image</div>`;
+        const factoryLine = earliestETA
+          ? `<div class="card-factory">${esc(earliestETA.factory_name)} &middot; ETA ${fmtDate(earliestETA.sample_eta)}</div>`
+          : styleQuotes.length ? `<div class="card-factory">${esc(styleQuotes[0].factory_name)}${styleQuotes[0].country ? ' &middot; '+esc(styleQuotes[0].country) : ''}</div>` : '';
+        return `<div class="card">
+          ${imgHtml}
+          <div class="card-body">
+            <div class="card-name">${esc(s.style_name)}</div>
+            ${s.style_number ? `<div class="card-sku">${esc(s.style_number)}</div>` : ''}
+            <div class="card-meta">${genderLabel} &middot; ${esc(s.status)}</div>
+            ${s.date_passed ? `<div class="card-date">Passed ${fmtDate(s.date_passed)}</div>` : ''}
+            ${factoryLine}
+          </div>
+        </div>`;
+      }).join('');
+
+      html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Dev Tracker - ${new Date().toLocaleDateString()}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 11px; color: #1A1A1A; margin: 0; padding: 24px 28px; }
+  .ph { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #1A1A1A; }
+  .pt { font-size: 17px; font-weight: 700; }
+  .pd { font-size: 11px; color: #888; margin-top: 3px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .card { border: 1px solid #E0DFDB; border-radius: 8px; overflow: hidden; page-break-inside: avoid; }
+  .card-img { width: 100%; height: 130px; object-fit: cover; display: block; background: #F0EFEB; }
+  .card-no-img { width: 100%; height: 130px; background: #F0EFEB; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #BBB; }
+  .card-body { padding: 9px 10px; }
+  .card-name { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+  .card-sku { font-size: 10px; color: #888; margin-bottom: 5px; }
+  .card-meta { font-size: 10px; color: #555; margin-bottom: 3px; }
+  .card-date { font-size: 10px; color: #888; margin-bottom: 3px; }
+  .card-factory { font-size: 10px; color: #1A1A1A; font-weight: 500; margin-top: 4px; padding-top: 4px; border-top: 1px solid #F0EFEB; }
+  @page { size: landscape; margin: 0.4in; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+<div class="ph">
+  <div><div class="pt">Dev Tracker</div><div class="pd">Exported ${dateStr}</div></div>
+  <div style="font-size:11px;color:#888">${allStyles.length} styles</div>
+</div>
+<div class="grid">${cards}</div>
+</body>
+</html>`;
+
+    } else {
+      // List view: plain table, no images
+      const rows = [];
+      for (const s of allStyles) {
+        const styleQuotes = allQuotes.filter(q => q.style_id === s.id);
+        const genderLabel = s.gender === 'Womens' ? "Women's" : "Men's";
+        const datePassed = s.date_passed ? fmtDate(s.date_passed) : '';
+        if (styleQuotes.length === 0) {
+          rows.push(`<tr style="border-top:2px solid #E0DFDB">
+            <td><strong>${esc(s.style_name)}</strong></td>
+            <td>${esc(s.style_number || '')}</td>
+            <td>${genderLabel}</td>
+            <td>${esc(s.status)}</td>
+            <td>${datePassed}</td>
+            <td colspan="3" style="color:#AAA;font-style:italic">No quotes</td>
           </tr>`);
-        });
+        } else {
+          styleQuotes.forEach((q, i) => {
+            const styleInfo = i === 0 ? `
+              <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB"><strong>${esc(s.style_name)}</strong></td>
+              <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB">${esc(s.style_number || '')}</td>
+              <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB">${genderLabel}</td>
+              <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB">${esc(s.status)}</td>
+              <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB">${datePassed}</td>
+            ` : '';
+            rows.push(`<tr style="border-top:${i === 0 ? '2px solid #E0DFDB' : '1px solid #F0EFEB'}">
+              ${styleInfo}
+              <td>${esc(q.factory_name)}</td>
+              <td>${q.country ? esc(q.country) : ''}</td>
+              <td>${q.sample_eta ? fmtDate(q.sample_eta) : ''}</td>
+            </tr>`);
+          });
+        }
       }
-    }
 
-    const html = `<!DOCTYPE html>
+      html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -1353,21 +1415,19 @@
 </head>
 <body>
 <div class="ph">
-  <div>
-    <div class="pt">Dev Tracker</div>
-    <div class="pd">Exported ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-  </div>
+  <div><div class="pt">Dev Tracker</div><div class="pd">Exported ${dateStr}</div></div>
   <div style="font-size:11px;color:#888">${allStyles.length} styles</div>
 </div>
 <table>
   <thead><tr>
-    <th>Style Name</th><th>#</th><th>Gender</th><th>Status</th><th>Date Passed</th>
-    <th>Factory</th><th>FOB</th><th>DDP</th><th>Sample ETA</th>
+    <th>Style Name</th><th>SKU</th><th>Gender</th><th>Status</th><th>Date Passed</th>
+    <th>Factory</th><th>Country</th><th>Sample ETA</th>
   </tr></thead>
   <tbody>${rows.join('')}</tbody>
 </table>
 </body>
 </html>`;
+    }
 
     const win = window.open('', '_blank');
     win.document.write(html);
