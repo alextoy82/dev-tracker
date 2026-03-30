@@ -1403,11 +1403,14 @@
   .ph { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #1A1A1A; }
   .pt { font-size: 18px; font-weight: 700; }
   .pn { font-size: 12px; color: #888; margin-top: 3px; }
-  .meta { display: flex; gap: 24px; margin-bottom: 20px; background: #F8F7F5; padding: 14px 16px; border-radius: 8px; }
+  .top-section { display: flex; gap: 20px; margin-bottom: 20px; align-items: flex-start; }
+  .spec-img { width: 180px; height: 180px; object-fit: cover; border-radius: 8px; flex-shrink: 0; border: 1px solid #E0DFDB; }
+  .meta-col { flex: 1; }
+  .meta { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; background: #F8F7F5; padding: 14px 16px; border-radius: 8px; }
   .meta-item { display: flex; flex-direction: column; gap: 3px; }
   .meta-label { font-size: 10px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.4px; }
   .meta-value { font-size: 13px; font-weight: 600; }
-  .notes-block { margin-bottom: 20px; font-size: 12px; color: #555; line-height: 1.5; padding: 12px 16px; border: 1px solid #E0DFDB; border-radius: 8px; }
+  .notes-block { font-size: 12px; color: #555; line-height: 1.5; padding: 12px 16px; border: 1px solid #E0DFDB; border-radius: 8px; }
   .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; color: #888; }
   table { width: 100%; border-collapse: collapse; }
   th { text-align: left; padding: 7px 10px; background: #1A1A1A; color: white; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
@@ -1424,12 +1427,17 @@
   </div>
   ${s.style_number ? `<div style="font-size:13px;color:#888">SKU: ${esc(s.style_number)}</div>` : ''}
 </div>
-<div class="meta">
-  <div class="meta-item"><span class="meta-label">Gender</span><span class="meta-value">${genderLabel}</span></div>
-  <div class="meta-item"><span class="meta-label">Status</span><span class="meta-value">${esc(s.status)}</span></div>
-  <div class="meta-item"><span class="meta-label">Date Passed</span><span class="meta-value">${s.date_passed ? fmtDate(s.date_passed) : 'Not set'}</span></div>
+<div class="top-section">
+  ${s.spec_image_url ? `<img class="spec-img" src="${s.spec_image_url}" />` : ''}
+  <div class="meta-col">
+    <div class="meta">
+      <div class="meta-item"><span class="meta-label">Gender</span><span class="meta-value">${genderLabel}</span></div>
+      <div class="meta-item"><span class="meta-label">Status</span><span class="meta-value">${esc(s.status)}</span></div>
+      <div class="meta-item"><span class="meta-label">Date Passed</span><span class="meta-value">${s.date_passed ? fmtDate(s.date_passed) : 'Not set'}</span></div>
+    </div>
+    ${s.notes ? `<div class="notes-block">${esc(s.notes)}</div>` : ''}
+  </div>
 </div>
-${s.notes ? `<div class="notes-block">${esc(s.notes)}</div>` : ''}
 <div class="section-title">Factory Quotes (${qs.length})</div>
 <table>
   <thead><tr>
