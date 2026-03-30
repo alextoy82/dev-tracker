@@ -588,7 +588,7 @@
       </div>
     </div>
     <div class="filters">
-      <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+      <button class="filter-btn active" id="filter-all" onclick="setFilter('all', this)">All</button>
       <button class="filter-btn" onclick="setFilter('Womens', this)">Women's</button>
       <button class="filter-btn" onclick="setFilter('Mens', this)">Men's</button>
       <button class="filter-btn" onclick="setFilter('In Sampling', this)">In Sampling</button>
@@ -801,7 +801,7 @@
 
   // STATE
   let allStyles      = [];
-  let currentFilter  = 'all';
+  let activeFilters  = new Set();
   let viewMode       = 'grid';
   let currentStyle   = null;
   let currentQuotes  = [];
@@ -891,9 +891,25 @@
   }
 
   function setFilter(f, btn) {
-    currentFilter = f;
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    if (f === 'all') {
+      activeFilters.clear();
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    } else {
+      if (activeFilters.has(f)) {
+        activeFilters.delete(f);
+        btn.classList.remove('active');
+      } else {
+        activeFilters.add(f);
+        btn.classList.add('active');
+      }
+      const allBtn = document.getElementById('filter-all');
+      if (activeFilters.size === 0) {
+        allBtn.classList.add('active');
+      } else {
+        allBtn.classList.remove('active');
+      }
+    }
     renderDashboard();
   }
 
@@ -909,8 +925,8 @@
     const query = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
 
     let list = allStyles;
-    if (currentFilter !== 'all') {
-      list = allStyles.filter(s => s.gender === currentFilter || s.status === currentFilter);
+    if (activeFilters.size > 0) {
+      list = allStyles.filter(s => activeFilters.has(s.gender) || activeFilters.has(s.status));
     }
     if (query) {
       list = list.filter(s =>
@@ -926,7 +942,7 @@
       grid.className = 'styles-grid';
       grid.innerHTML = `<div class="empty-state">
         <h3>No styles found</h3>
-        <p>${currentFilter === 'all' ? 'Click "+ Add Style" to get started.' : 'No styles match this filter.'}</p>
+        <p>${activeFilters.size === 0 ? 'Click "+ Add Style" to get started.' : 'No styles match this filter.'}</p>
       </div>`;
       return;
     }
