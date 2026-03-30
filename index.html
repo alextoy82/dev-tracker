@@ -920,13 +920,11 @@
     renderDashboard();
   }
 
-  function renderDashboard() {
-    const grid = document.getElementById('styles-grid');
+  function getVisibleStyles() {
     const query = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
-
     let list = allStyles;
     if (activeFilters.size > 0) {
-      list = allStyles.filter(s => activeFilters.has(s.gender) || activeFilters.has(s.status));
+      list = list.filter(s => activeFilters.has(s.gender) || activeFilters.has(s.status));
     }
     if (query) {
       list = list.filter(s =>
@@ -934,6 +932,12 @@
         (s.style_number && s.style_number.toLowerCase().includes(query))
       );
     }
+    return list;
+  }
+
+  function renderDashboard() {
+    const grid = document.getElementById('styles-grid');
+    const list = getVisibleStyles();
 
     const count = document.getElementById('style-count');
     count.textContent = list.length === 1 ? '1 style' : `${list.length} styles`;
@@ -1387,12 +1391,13 @@
     const { data: quotes } = await db.from('quotes').select('*');
     const allQuotes = quotes || [];
     const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const exportStyles = getVisibleStyles();
 
     let html;
 
     if (viewMode === 'grid') {
       // Card grid with thumbnails
-      const cards = allStyles.map(s => {
+      const cards = exportStyles.map(s => {
         const styleQuotes = allQuotes.filter(q => q.style_id === s.id);
         const etaQuotes = styleQuotes.filter(q => q.sample_eta).sort((a,b) => a.sample_eta.localeCompare(b.sample_eta));
         const earliestETA = etaQuotes.length ? etaQuotes[0] : null;
@@ -1442,7 +1447,7 @@
 <body>
 <div class="ph">
   <div><div class="pt">Dev Tracker</div><div class="pd">Exported ${dateStr}</div></div>
-  <div style="font-size:11px;color:#888">${allStyles.length} styles</div>
+  <div style="font-size:11px;color:#888">${exportStyles.length} styles</div>
 </div>
 <div class="grid">${cards}</div>
 </body>
@@ -1451,7 +1456,7 @@
     } else {
       // List view: plain table, no images
       const rows = [];
-      for (const s of allStyles) {
+      for (const s of exportStyles) {
         const styleQuotes = allQuotes.filter(q => q.style_id === s.id);
         const genderLabel = s.gender === 'Womens' ? "Women's" : "Men's";
         const datePassed = s.date_passed ? fmtDate(s.date_passed) : '';
@@ -1504,7 +1509,7 @@
 <body>
 <div class="ph">
   <div><div class="pt">Dev Tracker</div><div class="pd">Exported ${dateStr}</div></div>
-  <div style="font-size:11px;color:#888">${allStyles.length} styles</div>
+  <div style="font-size:11px;color:#888">${exportStyles.length} styles</div>
 </div>
 <table>
   <thead><tr>
