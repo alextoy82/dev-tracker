@@ -749,7 +749,7 @@
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Date Sent</label>
+          <label>Date Passed</label>
           <input type="date" id="quote-sent" />
         </div>
         <div class="form-group">
@@ -1064,7 +1064,7 @@
         ${priceTable}
         <div class="quote-fields">
           <div class="quote-field">
-            <span class="quote-field-label">Date Sent</span>
+            <span class="quote-field-label">Date Passed</span>
             <span class="quote-field-value">${fmtDate(q.date_sent)}</span>
           </div>
           <div class="quote-field">
@@ -1263,7 +1263,7 @@
     document.getElementById('quote-modal-title').textContent = q ? 'Edit Quote' : 'Add Factory Quote';
     document.getElementById('quote-factory').value = q ? q.factory_name : '';
     document.getElementById('quote-contact').value = q ? (q.factory_contact || '') : '';
-    document.getElementById('quote-sent').value       = q ? (q.date_sent || '') : '';
+    document.getElementById('quote-sent').value       = q ? (q.date_sent || '') : (currentStyle?.date_passed || '');
     document.getElementById('quote-eta').value        = q ? (q.sample_eta || '') : '';
     document.getElementById('quote-sampling').checked = q ? !!q.is_sampling : false;
     if (q && q.costings && q.costings.length) {
@@ -1330,7 +1330,7 @@
 
     const priceCols = QTYS.flatMap(qty => [`FOB ${qty.toUpperCase()}`, `DDP ${qty.toUpperCase()}`]);
     const rows = [
-      ['Style Name','SKU Number','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Sent','Sample ETA',...priceCols,'Factory Notes']
+      ['Style Name','SKU Number','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Passed','Sample ETA',...priceCols,'Factory Notes']
     ];
 
     for (const s of allStyles) {
@@ -1519,7 +1519,7 @@
 
     const priceCols = QTYS.flatMap(qty => [`FOB ${qty.toUpperCase()}`, `DDP ${qty.toUpperCase()}`]);
     const rows = [
-      ['Style Name','SKU Number','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Sent','Sample ETA',...priceCols,'Factory Notes']
+      ['Style Name','SKU Number','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Passed','Sample ETA',...priceCols,'Factory Notes']
     ];
     const prices = q => QTYS.flatMap(qty => [q[`fob_${qty}`]||'', q[`ddp_${qty}`]||'']);
 
@@ -1577,7 +1577,7 @@
           return `<div class="factory-block">
             <div class="factory-header">
               <span class="fh-name">${esc(q.factory_name)}${q.factory_contact ? ' <span class="fh-contact">'+esc(q.factory_contact)+'</span>' : ''}</span>
-              <span class="fh-meta">${q.country ? esc(q.country)+' &nbsp;|&nbsp; ' : ''}${q.date_sent ? 'Sent: '+fmtDate(q.date_sent)+' &nbsp;|&nbsp; ' : ''}ETA: ${q.sample_eta ? fmtDate(q.sample_eta) : 'TBD'}</span>
+              <span class="fh-meta">${q.country ? esc(q.country)+' &nbsp;|&nbsp; ' : ''}${q.date_sent ? 'Passed: '+fmtDate(q.date_sent)+' &nbsp;|&nbsp; ' : ''}ETA: ${q.sample_eta ? fmtDate(q.sample_eta) : 'TBD'}</span>
             </div>
             ${pricedTiers.length ? `<table class="ptable">
               <thead><tr><th>QTY</th><th>FOB (USD)</th><th>DDP (USD)</th></tr></thead>
