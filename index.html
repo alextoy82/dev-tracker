@@ -346,26 +346,39 @@
     }
     .quote-factory { font-size: 15px; font-weight: 600; }
     .quote-contact { font-size: 13px; color: #6B6B6B; margin-top: 2px; margin-bottom: 16px; min-height: 18px; }
-    .quote-prices {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+    .qty-price-table {
+      width: 100%;
+      border-collapse: collapse;
       margin-bottom: 14px;
-    }
-    .price-block {
-      background: #F8F7F5;
+      border: 1px solid #E0DFDB;
       border-radius: 8px;
-      padding: 12px 14px;
+      overflow: hidden;
+      font-size: 12px;
     }
-    .price-label {
+    .qty-price-table th {
+      text-align: left;
+      padding: 6px 10px;
       font-size: 10px;
       font-weight: 600;
       color: #888;
+      background: #F8F7F5;
+      border-bottom: 1px solid #E0DFDB;
       text-transform: uppercase;
-      letter-spacing: 0.6px;
-      margin-bottom: 4px;
+      letter-spacing: 0.4px;
     }
-    .price-value { font-size: 20px; font-weight: 700; color: #1A1A1A; }
+    .qty-price-table td { padding: 6px 10px; border-bottom: 1px solid #F0EFEB; }
+    .qty-price-table tr:last-child td { border-bottom: none; }
+    .qty-price-table td:first-child { font-weight: 600; color: #444; width: 36px; }
+    .quote-country { font-size: 12px; color: #6B6B6B; margin-bottom: 12px; }
+    /* PRICE GRID IN MODAL */
+    .price-grid-wrap { border: 1px solid #E0DFDB; border-radius: 8px; overflow: hidden; }
+    .price-grid-wrap table { width: 100%; border-collapse: collapse; }
+    .price-grid-wrap th { padding: 7px 10px; font-size: 11px; font-weight: 600; color: #888; background: #F8F7F5; border-bottom: 1px solid #E0DFDB; text-align: left; }
+    .price-grid-wrap td { padding: 4px 6px; border-bottom: 1px solid #F0EFEB; vertical-align: middle; }
+    .price-grid-wrap tr:last-child td { border-bottom: none; }
+    .price-grid-wrap td:first-child { font-size: 12px; font-weight: 600; color: #444; width: 44px; padding-left: 10px; }
+    .price-grid-wrap input { width: 100%; padding: 6px 10px; border: 1px solid #E0DFDB; border-radius: 6px; font-size: 13px; font-family: inherit; background: white; }
+    .price-grid-wrap input:focus { outline: none; border-color: #1A1A1A; }
     .quote-fields { display: flex; flex-direction: column; gap: 8px; }
     .quote-field { display: flex; justify-content: space-between; font-size: 13px; }
     .quote-field-label { color: #6B6B6B; }
@@ -724,22 +737,38 @@
       </div>
       <div class="form-row">
         <div class="form-group">
+          <label>Country</label>
+          <select id="quote-country">
+            <option value="">Select...</option>
+            <option value="China">China</option>
+            <option value="Myanmar">Myanmar</option>
+            <option value="Thailand">Thailand</option>
+            <option value="Cambodia">Cambodia</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>Date Sent</label>
           <input type="date" id="quote-sent" />
         </div>
-        <div class="form-group">
-          <label>Sample ETA</label>
-          <input type="date" id="quote-eta" />
-        </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>FOB Price (USD)</label>
-          <input type="number" id="quote-fob" placeholder="0.00" step="0.01" min="0" />
-        </div>
-        <div class="form-group">
-          <label>DDP Price (USD)</label>
-          <input type="number" id="quote-ddp" placeholder="0.00" step="0.01" min="0" />
+      <div class="form-group">
+        <label>Sample ETA</label>
+        <input type="date" id="quote-eta" />
+      </div>
+      <div class="form-group">
+        <label>Pricing by QTY (USD)</label>
+        <div class="price-grid-wrap">
+          <table>
+            <thead><tr><th>QTY</th><th>FOB</th><th>DDP</th></tr></thead>
+            <tbody>
+              <tr><td>5K</td><td><input type="number" id="quote-fob-5k" placeholder="0.00" step="0.01" min="0" /></td><td><input type="number" id="quote-ddp-5k" placeholder="0.00" step="0.01" min="0" /></td></tr>
+              <tr><td>10K</td><td><input type="number" id="quote-fob-10k" placeholder="0.00" step="0.01" min="0" /></td><td><input type="number" id="quote-ddp-10k" placeholder="0.00" step="0.01" min="0" /></td></tr>
+              <tr><td>15K</td><td><input type="number" id="quote-fob-15k" placeholder="0.00" step="0.01" min="0" /></td><td><input type="number" id="quote-ddp-15k" placeholder="0.00" step="0.01" min="0" /></td></tr>
+              <tr><td>20K</td><td><input type="number" id="quote-fob-20k" placeholder="0.00" step="0.01" min="0" /></td><td><input type="number" id="quote-ddp-20k" placeholder="0.00" step="0.01" min="0" /></td></tr>
+              <tr><td>25K</td><td><input type="number" id="quote-fob-25k" placeholder="0.00" step="0.01" min="0" /></td><td><input type="number" id="quote-ddp-25k" placeholder="0.00" step="0.01" min="0" /></td></tr>
+              <tr><td>30K</td><td><input type="number" id="quote-fob-30k" placeholder="0.00" step="0.01" min="0" /></td><td><input type="number" id="quote-ddp-30k" placeholder="0.00" step="0.01" min="0" /></td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
       <div class="form-group">
@@ -761,6 +790,7 @@
   const SUPABASE_KEY = 'sb_publishable_cD0TuUoyW910GvfW8pmaVg_IDbnRBSC';
   const PASSWORD     = 'JWmobile';
   const BUCKET       = 'spec-images';
+  const QTYS         = ['5k','10k','15k','20k','25k','30k'];
 
   const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -1000,20 +1030,25 @@
       grid.innerHTML = `<div class="no-quotes">No factory quotes yet. Add one to start comparing.</div>`;
       return;
     }
-    grid.innerHTML = currentQuotes.map(q => `
+    grid.innerHTML = currentQuotes.map(q => {
+      const pricedTiers = QTYS.filter(qty => q[`fob_${qty}`] || q[`ddp_${qty}`]);
+      const priceTable = pricedTiers.length ? `
+        <table class="qty-price-table">
+          <thead><tr><th>QTY</th><th>FOB</th><th>DDP</th></tr></thead>
+          <tbody>
+            ${pricedTiers.map(qty => `<tr>
+              <td>${qty.toUpperCase()}</td>
+              <td>${q[`fob_${qty}`] ? '$'+parseFloat(q[`fob_${qty}`]).toFixed(2) : '—'}</td>
+              <td>${q[`ddp_${qty}`] ? '$'+parseFloat(q[`ddp_${qty}`]).toFixed(2) : '—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>` : '';
+      return `
       <div class="quote-card">
         <div class="quote-factory">${esc(q.factory_name)}</div>
         <div class="quote-contact">${q.factory_contact ? esc(q.factory_contact) : ''}</div>
-        <div class="quote-prices">
-          <div class="price-block">
-            <div class="price-label">FOB</div>
-            <div class="price-value">${fmtPrice(q.fob_price)}</div>
-          </div>
-          <div class="price-block">
-            <div class="price-label">DDP</div>
-            <div class="price-value">${fmtPrice(q.ddp_price)}</div>
-          </div>
-        </div>
+        ${q.country ? `<div class="quote-country">${esc(q.country)}</div>` : ''}
+        ${priceTable}
         <div class="quote-fields">
           <div class="quote-field">
             <span class="quote-field-label">Date Sent</span>
@@ -1030,7 +1065,7 @@
           <button class="btn btn-danger btn-sm" onclick="confirmDeleteQuote('${q.id}')">Delete</button>
         </div>
       </div>
-    `).join('');
+    `}).join('');
   }
 
   // STYLE MODAL
@@ -1161,10 +1196,13 @@
     document.getElementById('quote-modal-title').textContent = q ? 'Edit Quote' : 'Add Factory Quote';
     document.getElementById('quote-factory').value = q ? q.factory_name : '';
     document.getElementById('quote-contact').value = q ? (q.factory_contact || '') : '';
+    document.getElementById('quote-country').value = q ? (q.country || '') : '';
     document.getElementById('quote-sent').value    = q ? (q.date_sent || '') : '';
     document.getElementById('quote-eta').value     = q ? (q.sample_eta || '') : '';
-    document.getElementById('quote-fob').value     = q ? (q.fob_price || '') : '';
-    document.getElementById('quote-ddp').value     = q ? (q.ddp_price || '') : '';
+    QTYS.forEach(qty => {
+      document.getElementById(`quote-fob-${qty}`).value = q ? (q[`fob_${qty}`] || '') : '';
+      document.getElementById(`quote-ddp-${qty}`).value = q ? (q[`ddp_${qty}`] || '') : '';
+    });
     document.getElementById('quote-notes').value   = q ? (q.notes || '') : '';
     document.getElementById('modal-quote').classList.remove('hidden');
   }
@@ -1177,12 +1215,15 @@
       style_id:        currentStyle.id,
       factory_name:    factory,
       factory_contact: document.getElementById('quote-contact').value.trim() || null,
+      country:         document.getElementById('quote-country').value || null,
       date_sent:       document.getElementById('quote-sent').value || null,
       sample_eta:      document.getElementById('quote-eta').value || null,
-      fob_price:       document.getElementById('quote-fob').value || null,
-      ddp_price:       document.getElementById('quote-ddp').value || null,
       notes:           document.getElementById('quote-notes').value.trim() || null,
     };
+    QTYS.forEach(qty => {
+      payload[`fob_${qty}`] = document.getElementById(`quote-fob-${qty}`).value || null;
+      payload[`ddp_${qty}`] = document.getElementById(`quote-ddp-${qty}`).value || null;
+    });
 
     const id = document.getElementById('quote-id').value;
     let error;
@@ -1215,14 +1256,16 @@
     const { data: quotes } = await db.from('quotes').select('*');
     const allQuotes = quotes || [];
 
+    const priceCols = QTYS.flatMap(qty => [`FOB ${qty.toUpperCase()}`, `DDP ${qty.toUpperCase()}`]);
     const rows = [
-      ['Style Name','SKU Number','Gender','Date Passed','Status','Notes','Factory','Contact','Date Sent','Sample ETA','FOB (USD)','DDP (USD)','Factory Notes']
+      ['Style Name','SKU Number','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Sent','Sample ETA',...priceCols,'Factory Notes']
     ];
 
     for (const s of allStyles) {
       const styleQuotes = allQuotes.filter(q => q.style_id === s.id);
+      const prices = q => QTYS.flatMap(qty => [q[`fob_${qty}`]||'', q[`ddp_${qty}`]||'']);
       if (styleQuotes.length === 0) {
-        rows.push([s.style_name, s.style_number||'', s.gender==='Womens'?"Women's":"Men's", s.date_passed||'', s.status, s.notes||'', '','','','','','','']);
+        rows.push([s.style_name, s.style_number||'', s.gender==='Womens'?"Women's":"Men's", s.date_passed||'', s.status, s.notes||'', '','','','','', ...QTYS.flatMap(()=>['','']), '']);
       } else {
         styleQuotes.forEach((q, i) => {
           rows.push([
@@ -1232,8 +1275,8 @@
             i === 0 ? (s.date_passed||'') : '',
             i === 0 ? s.status : '',
             i === 0 ? (s.notes||'') : '',
-            q.factory_name, q.factory_contact||'', q.date_sent||'', q.sample_eta||'',
-            q.fob_price||'', q.ddp_price||'', q.notes||''
+            q.factory_name, q.country||'', q.factory_contact||'', q.date_sent||'', q.sample_eta||'',
+            ...prices(q), q.notes||''
           ]);
         });
       }
@@ -1342,12 +1385,14 @@
     const s = currentStyle;
     const genderLabel = s.gender === 'Womens' ? "Women's" : "Men's";
 
+    const priceCols = QTYS.flatMap(qty => [`FOB ${qty.toUpperCase()}`, `DDP ${qty.toUpperCase()}`]);
     const rows = [
-      ['Style Name','SKU Number','Gender','Date Passed','Status','Notes','Factory','Contact','Date Sent','Sample ETA','FOB (USD)','DDP (USD)','Factory Notes']
+      ['Style Name','SKU Number','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Sent','Sample ETA',...priceCols,'Factory Notes']
     ];
+    const prices = q => QTYS.flatMap(qty => [q[`fob_${qty}`]||'', q[`ddp_${qty}`]||'']);
 
     if (qs.length === 0) {
-      rows.push([s.style_name, s.style_number||'', genderLabel, s.date_passed||'', s.status, s.notes||'', '','','','','','','']);
+      rows.push([s.style_name, s.style_number||'', genderLabel, s.date_passed||'', s.status, s.notes||'', '','','','','', ...QTYS.flatMap(()=>['','']), '']);
     } else {
       qs.forEach((q, i) => {
         rows.push([
@@ -1357,8 +1402,8 @@
           i === 0 ? (s.date_passed||'') : '',
           i === 0 ? s.status : '',
           i === 0 ? (s.notes||'') : '',
-          q.factory_name, q.factory_contact||'', q.date_sent||'', q.sample_eta||'',
-          q.fob_price||'', q.ddp_price||'', q.notes||''
+          q.factory_name, q.country||'', q.factory_contact||'', q.date_sent||'', q.sample_eta||'',
+          ...prices(q), q.notes||''
         ]);
       });
     }
@@ -1382,16 +1427,27 @@
     const s = currentStyle;
     const genderLabel = s.gender === 'Womens' ? "Women's" : "Men's";
 
-    const quoteRows = qs.length === 0
-      ? `<tr><td colspan="5" style="color:#AAA;font-style:italic;padding:12px 10px">No factory quotes yet</td></tr>`
-      : qs.map(q => `<tr>
-          <td>${esc(q.factory_name)}${q.factory_contact ? '<br><span style="color:#888;font-size:10px">'+esc(q.factory_contact)+'</span>' : ''}</td>
-          <td>${q.date_sent ? fmtDate(q.date_sent) : ''}</td>
-          <td>${q.fob_price ? '$'+parseFloat(q.fob_price).toFixed(2) : ''}</td>
-          <td>${q.ddp_price ? '$'+parseFloat(q.ddp_price).toFixed(2) : ''}</td>
-          <td style="font-weight:600">${q.sample_eta ? fmtDate(q.sample_eta) : ''}</td>
-        </tr>${q.notes ? `<tr><td colspan="5" style="color:#555;font-style:italic;padding:4px 10px 8px;border-top:none">${esc(q.notes)}</td></tr>` : ''}`
-      ).join('');
+    const quoteBlocks = qs.length === 0
+      ? `<p style="color:#AAA;font-style:italic">No factory quotes yet.</p>`
+      : qs.map(q => {
+          const pricedTiers = QTYS.filter(qty => q[`fob_${qty}`] || q[`ddp_${qty}`]);
+          const priceRows = pricedTiers.map(qty => `<tr>
+            <td>${qty.toUpperCase()}</td>
+            <td>${q[`fob_${qty}`] ? '$'+parseFloat(q[`fob_${qty}`]).toFixed(2) : '—'}</td>
+            <td>${q[`ddp_${qty}`] ? '$'+parseFloat(q[`ddp_${qty}`]).toFixed(2) : '—'}</td>
+          </tr>`).join('');
+          return `<div class="factory-block">
+            <div class="factory-header">
+              <span class="fh-name">${esc(q.factory_name)}${q.factory_contact ? ' <span class="fh-contact">'+esc(q.factory_contact)+'</span>' : ''}</span>
+              <span class="fh-meta">${q.country ? esc(q.country)+' &nbsp;|&nbsp; ' : ''}${q.date_sent ? 'Sent: '+fmtDate(q.date_sent)+' &nbsp;|&nbsp; ' : ''}ETA: ${q.sample_eta ? fmtDate(q.sample_eta) : 'TBD'}</span>
+            </div>
+            ${pricedTiers.length ? `<table class="ptable">
+              <thead><tr><th>QTY</th><th>FOB (USD)</th><th>DDP (USD)</th></tr></thead>
+              <tbody>${priceRows}</tbody>
+            </table>` : '<p style="font-size:11px;color:#AAA;padding:8px 12px;margin:0">No pricing entered yet.</p>'}
+            ${q.notes ? `<div class="factory-notes">${esc(q.notes)}</div>` : ''}
+          </div>`;
+        }).join('');
 
     const html = `<!DOCTYPE html>
 <html>
@@ -1412,9 +1468,17 @@
   .meta-value { font-size: 13px; font-weight: 600; }
   .notes-block { font-size: 12px; color: #555; line-height: 1.5; padding: 12px 16px; border: 1px solid #E0DFDB; border-radius: 8px; }
   .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; color: #888; }
-  table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; padding: 7px 10px; background: #1A1A1A; color: white; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
-  td { padding: 7px 10px; vertical-align: top; font-size: 11px; border-bottom: 1px solid #F0EFEB; }
+  .factory-block { border: 1px solid #E0DFDB; border-radius: 6px; overflow: hidden; margin-bottom: 12px; page-break-inside: avoid; }
+  .factory-header { display: flex; justify-content: space-between; align-items: baseline; padding: 9px 12px; background: #F8F7F5; border-bottom: 1px solid #E0DFDB; flex-wrap: wrap; gap: 6px; }
+  .fh-name { font-size: 13px; font-weight: 700; }
+  .fh-contact { font-size: 11px; font-weight: 400; color: #888; margin-left: 6px; }
+  .fh-meta { font-size: 11px; color: #666; }
+  .factory-notes { font-size: 11px; color: #555; font-style: italic; padding: 7px 12px; border-top: 1px solid #F0EFEB; }
+  .ptable { width: 100%; border-collapse: collapse; }
+  .ptable th { text-align: left; padding: 5px 12px; background: #1A1A1A; color: white; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+  .ptable td { padding: 5px 12px; font-size: 11px; border-bottom: 1px solid #F0EFEB; }
+  .ptable tr:last-child td { border-bottom: none; }
+  .ptable td:first-child { font-weight: 600; color: #444; width: 40px; }
   @page { size: portrait; margin: 0.5in; }
   @media print { body { padding: 0; } }
 </style>
@@ -1439,12 +1503,7 @@
   </div>
 </div>
 <div class="section-title">Factory Quotes (${qs.length})</div>
-<table>
-  <thead><tr>
-    <th>Factory</th><th>Date Sent</th><th>FOB</th><th>DDP</th><th>Sample ETA</th>
-  </tr></thead>
-  <tbody>${quoteRows}</tbody>
-</table>
+${quoteBlocks}
 </body>
 </html>`;
 
