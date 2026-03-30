@@ -399,6 +399,17 @@
       gap: 8px;
     }
     .no-quotes { font-size: 14px; color: #6B6B6B; padding: 32px 0; }
+    .badge-sampling-on { background: #EDE9FE; color: #6D28D9; }
+    /* SAMPLING TOGGLE */
+    .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
+    .toggle-info .toggle-label { font-size: 13px; font-weight: 500; color: #444; }
+    .toggle-info .toggle-desc { font-size: 12px; color: #888; margin-top: 2px; }
+    .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #E0DFDB; border-radius: 24px; transition: 0.2s; }
+    .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    input:checked + .toggle-slider { background: #1A1A1A; }
+    input:checked + .toggle-slider:before { transform: translateX(20px); }
 
     /* MODAL */
     .modal-overlay {
@@ -756,6 +767,18 @@
         <input type="date" id="quote-eta" />
       </div>
       <div class="form-group">
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-label">Sampling</div>
+            <div class="toggle-desc">Factory has been asked to make a sample</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="quote-sampling" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
         <label>Pricing by QTY (USD)</label>
         <div class="price-grid-wrap">
           <table>
@@ -868,7 +891,7 @@
   async function loadStyles() {
     const [stylesRes, quotesRes] = await Promise.all([
       db.from('styles').select('*').order('created_at', { ascending: false }),
-      db.from('quotes').select('style_id, factory_name, sample_eta')
+      db.from('quotes').select('style_id, factory_name, sample_eta, is_sampling')
     ]);
     if (stylesRes.error) { toast('Error loading styles', 'error'); return; }
     allStyles = stylesRes.data || [];
@@ -951,8 +974,8 @@
 
     grid.className = 'styles-grid';
     grid.innerHTML = list.map(s => {
-      const quotes = allQuotesCache.filter(q => q.style_id === s.id && q.sample_eta);
-      const hasETAs = quotes.length > 0;
+      const samplingQuotes = allQuotesCache.filter(q => q.style_id === s.id && q.is_sampling);
+      const hasSampling = samplingQuotes.length > 0;
       return `
       <div class="style-card" id="card-${s.id}">
         <div onclick="openDetail('${s.id}')">
@@ -971,14 +994,14 @@
             ${s.date_passed ? `<div class="style-card-date">Passed ${fmtDate(s.date_passed)}</div>` : ''}
           </div>
         </div>
-        ${hasETAs ? `
+        ${hasSampling ? `
         <div style="padding:0 16px 12px">
-          <button class="eta-toggle-btn" onclick="toggleETA('${s.id}', this)">Sample ETA</button>
+          <button class="eta-toggle-btn" onclick="toggleETA('${s.id}', this)">Sampling</button>
           <div class="eta-panel hidden" id="eta-panel-${s.id}">
-            ${quotes.map(q => `
+            ${samplingQuotes.map(q => `
               <div class="eta-row">
                 <span class="eta-factory">${esc(q.factory_name)}</span>
-                <span class="eta-date">${fmtDate(q.sample_eta)}</span>
+                <span class="eta-date">${q.sample_eta ? fmtDate(q.sample_eta) : 'ETA TBD'}</span>
               </div>
             `).join('')}
           </div>
@@ -1045,9 +1068,14 @@
         </table>` : '';
       return `
       <div class="quote-card">
-        <div class="quote-factory">${esc(q.factory_name)}</div>
-        <div class="quote-contact">${q.factory_contact ? esc(q.factory_contact) : ''}</div>
-        ${q.country ? `<div class="quote-country">${esc(q.country)}</div>` : ''}
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div class="quote-factory">${esc(q.factory_name)}</div>
+            <div class="quote-contact">${q.factory_contact ? esc(q.factory_contact) : ''}</div>
+            ${q.country ? `<div class="quote-country">${esc(q.country)}</div>` : ''}
+          </div>
+          ${q.is_sampling ? `<span class="badge badge-sampling-on">Sampling</span>` : ''}
+        </div>
         ${priceTable}
         <div class="quote-fields">
           <div class="quote-field">
@@ -1196,9 +1224,10 @@
     document.getElementById('quote-modal-title').textContent = q ? 'Edit Quote' : 'Add Factory Quote';
     document.getElementById('quote-factory').value = q ? q.factory_name : '';
     document.getElementById('quote-contact').value = q ? (q.factory_contact || '') : '';
-    document.getElementById('quote-country').value = q ? (q.country || '') : '';
-    document.getElementById('quote-sent').value    = q ? (q.date_sent || '') : '';
-    document.getElementById('quote-eta').value     = q ? (q.sample_eta || '') : '';
+    document.getElementById('quote-country').value   = q ? (q.country || '') : '';
+    document.getElementById('quote-sent').value      = q ? (q.date_sent || '') : '';
+    document.getElementById('quote-eta').value       = q ? (q.sample_eta || '') : '';
+    document.getElementById('quote-sampling').checked = q ? !!q.is_sampling : false;
     QTYS.forEach(qty => {
       document.getElementById(`quote-fob-${qty}`).value = q ? (q[`fob_${qty}`] || '') : '';
       document.getElementById(`quote-ddp-${qty}`).value = q ? (q[`ddp_${qty}`] || '') : '';
@@ -1218,6 +1247,7 @@
       country:         document.getElementById('quote-country').value || null,
       date_sent:       document.getElementById('quote-sent').value || null,
       sample_eta:      document.getElementById('quote-eta').value || null,
+      is_sampling:     document.getElementById('quote-sampling').checked,
       notes:           document.getElementById('quote-notes').value.trim() || null,
     };
     QTYS.forEach(qty => {
