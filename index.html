@@ -924,7 +924,14 @@
     const query = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
     let list = allStyles;
     if (activeFilters.size > 0) {
-      list = list.filter(s => activeFilters.has(s.gender) || activeFilters.has(s.status));
+      const genderFilters = ['Womens', 'Mens'];
+      const activeGenders = [...activeFilters].filter(f => genderFilters.includes(f));
+      const activeStatuses = [...activeFilters].filter(f => !genderFilters.includes(f));
+      list = list.filter(s => {
+        const genderMatch = activeGenders.length === 0 || activeGenders.includes(s.gender);
+        const statusMatch = activeStatuses.length === 0 || activeStatuses.includes(s.status);
+        return genderMatch && statusMatch;
+      });
     }
     if (query) {
       list = list.filter(s =>
