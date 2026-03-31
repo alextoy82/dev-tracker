@@ -576,11 +576,15 @@
     <h1>Dev Tracker</h1>
     <p class="subtitle">Design development tracking</p>
     <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="login-pw" placeholder="Enter team password" />
+      <label>Email</label>
+      <input type="text" id="login-email" placeholder="Enter email" autocomplete="email" />
     </div>
-    <button class="btn btn-primary btn-full" onclick="login()">Sign In</button>
-    <p class="login-error" id="login-error">Incorrect password. Try again.</p>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-pw" placeholder="Enter password" autocomplete="current-password" />
+    </div>
+    <button class="btn btn-primary btn-full" id="login-btn" onclick="login()">Sign In</button>
+    <p class="login-error" id="login-error">Incorrect email or password.</p>
   </div>
 </div>
 
@@ -592,6 +596,7 @@
       <button class="btn btn-white btn-sm" onclick="exportCSV()"><span class="lbl-full">Export CSV</span><span class="lbl-short">CSV</span></button>
       <button class="btn btn-white btn-sm" onclick="exportPDF()"><span class="lbl-full">Export PDF</span><span class="lbl-short">PDF</span></button>
       <button class="btn btn-white btn-sm" onclick="openStyleModal()"><span class="lbl-full">+ Add Style</span><span class="lbl-short">+ Add</span></button>
+      <button class="btn btn-white btn-sm" onclick="logout()"><span class="lbl-full">Sign Out</span><span class="lbl-short">Out</span></button>
     </div>
   </div>
   <div class="container">
@@ -631,6 +636,7 @@
       <button class="btn btn-white btn-sm" onclick="showView('dashboard')"><span class="lbl-full">Back to All Styles</span><span class="lbl-short">← Back</span></button>
       <button class="btn btn-white btn-sm" onclick="exportStyleCSV()"><span class="lbl-full">Export CSV</span><span class="lbl-short">CSV</span></button>
       <button class="btn btn-white btn-sm" onclick="exportStylePDF()"><span class="lbl-full">Export PDF</span><span class="lbl-short">PDF</span></button>
+      <button class="btn btn-white btn-sm" onclick="logout()"><span class="lbl-full">Sign Out</span><span class="lbl-short">Out</span></button>
     </div>
   </div>
   <div class="container">
@@ -828,7 +834,6 @@
   // CONFIG
   const SUPABASE_URL = 'https://eiykvjfutqdrvwsymdtx.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_cD0TuUoyW910GvfW8pmaVg_IDbnRBSC';
-  const PASSWORD     = 'JWmobile';
   const BUCKET       = 'spec-images';
   const QTYS         = ['5k','10k','15k','20k','25k','30k'];
 
@@ -845,17 +850,37 @@
   let pendingCostings  = [];
 
   // AUTH
-  function login() {
-    const val = document.getElementById('login-pw').value;
-    if (val === PASSWORD) {
-      sessionStorage.setItem('auth', '1');
-      showView('dashboard');
-      loadStyles();
-    } else {
+  async function login() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-pw').value;
+    const btn = document.getElementById('login-btn');
+    btn.textContent = 'Signing in...';
+    btn.disabled = true;
+    document.getElementById('login-error').style.display = 'none';
+    const { error } = await db.auth.signInWithPassword({ email, password });
+    btn.textContent = 'Sign In';
+    btn.disabled = false;
+    if (error) {
       document.getElementById('login-error').style.display = 'block';
     }
   }
+
+  async function logout() {
+    await db.auth.signOut();
+    showView('login');
+  }
+
   document.getElementById('login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+  document.getElementById('login-email').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+  db.auth.onAuthStateChange((event, session) => {
+    if (session) {
+      showView('dashboard');
+      loadStyles();
+    } else {
+      showView('login');
+    }
+  });
 
   // VIEWS
   function showView(v) {
@@ -1869,11 +1894,7 @@ ${comments.length ? `
     el.addEventListener('click', e => { if (e.target === el) el.classList.add('hidden'); });
   });
 
-  // INIT
-  if (sessionStorage.getItem('auth') === '1') {
-    showView('dashboard');
-    loadStyles();
-  }
+  // INIT — auth state handled by onAuthStateChange above
 </script>
 </body>
 </html>
