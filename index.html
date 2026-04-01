@@ -441,6 +441,20 @@
     .comment-input-footer select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 3px; font-size: 13px; font-family: inherit; background: white; color: var(--black); }
     .comment-input-footer select:focus { outline: none; border-color: var(--green); }
     .badge-sampling-on { background: #D6FAD0; color: #1A7000; }
+    .comment-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 6px;
+      border-radius: 2px;
+      margin-right: 4px;
+    }
+    .comment-tag-buyer        { background: #DBEAFE; color: #1E40AF; }
+    .comment-tag-golden       { background: #FEF9C3; color: #854D0E; }
+    .comment-tag-factory      { background: #F0F0F0; color: #444; }
+    .comment-tag-general      { background: #F0F0F0; color: #777; }
     /* SAMPLING TOGGLE */
     .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
     .toggle-info .toggle-label { font-size: 13px; font-weight: 500; color: #444; }
@@ -1161,19 +1175,25 @@
     // Update factory dropdown
     const sel = document.getElementById('comment-factory');
     const current = sel.value;
-    sel.innerHTML = '<option value="">General</option>' +
-      currentQuotes.map(q => `<option value="${esc(q.factory_name)}" ${current === q.factory_name ? 'selected' : ''}>${esc(q.factory_name)}</option>`).join('');
+    const factoryOptions = currentQuotes.map(q => `<option value="${esc(q.factory_name)}" ${current === q.factory_name ? 'selected' : ''}>${esc(q.factory_name)}</option>`).join('');
+    sel.innerHTML = `<option value="">General</option>${factoryOptions}<option value="__buyer__">Buyer</option><option value="__golden__">Golden Sample</option>`;
 
     const list = document.getElementById('comments-list');
     if (!currentComments.length) {
       list.innerHTML = `<div style="font-size:13px;color:#AAA;padding:8px 0">No comments yet.</div>`;
       return;
     }
+    function commentTagHtml(factory_name) {
+      if (factory_name === '__buyer__')  return `<span class="comment-tag comment-tag-buyer">Buyer</span>`;
+      if (factory_name === '__golden__') return `<span class="comment-tag comment-tag-golden">Golden Sample</span>`;
+      if (factory_name)                 return `<span class="comment-tag comment-tag-factory">${esc(factory_name)}</span>`;
+      return `<span class="comment-tag comment-tag-general">General</span>`;
+    }
     list.innerHTML = currentComments.map(c => `
       <div class="comment-item">
         <div class="comment-meta">
-          <div style="display:flex;align-items:baseline;gap:8px">
-            <span class="comment-factory">${c.factory_name ? esc(c.factory_name) : 'General'}</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            ${commentTagHtml(c.factory_name)}
             <span class="comment-date">${fmtDate((c.created_at || '').slice(0,10))}</span>
           </div>
           <button class="comment-delete" onclick="deleteComment('${c.id}')">&times;</button>
