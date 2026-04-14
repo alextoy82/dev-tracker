@@ -691,6 +691,10 @@
             <div class="detail-number" id="detail-number"></div>
             <div class="detail-meta">
               <div class="detail-row">
+                <span class="detail-label">Brand</span>
+                <span id="detail-brand"></span>
+              </div>
+              <div class="detail-row">
                 <span class="detail-label">Gender</span>
                 <span id="detail-gender"></span>
               </div>
@@ -761,6 +765,15 @@
         </div>
       </div>
       <div class="form-row">
+        <div class="form-group">
+          <label>Brand</label>
+          <select id="style-brand">
+            <option value="">Select...</option>
+            <option value="Sharper Image">Sharper Image</option>
+            <option value="Primo">Primo</option>
+            <option value="Swissmate">Swissmate</option>
+          </select>
+        </div>
         <div class="form-group">
           <label>Gender *</label>
           <select id="style-gender">
@@ -1113,6 +1126,7 @@
           <div class="style-card-body">
             <div class="style-card-name">${esc(s.style_name)}</div>
             ${s.style_number ? `<div class="style-card-number">${esc(s.style_number)}</div>` : ''}
+            ${s.brand ? `<div class="style-card-number" style="color:#888">${esc(s.brand)}</div>` : ''}
             <div class="style-card-meta">
               ${genderBadge(s.gender)}
               ${statusBadge(s.status)}
@@ -1147,6 +1161,7 @@
 
     document.getElementById('detail-name').textContent = s.style_name;
     document.getElementById('detail-number').textContent = s.style_number || '';
+    document.getElementById('detail-brand').textContent = s.brand || '—';
     document.getElementById('detail-gender').innerHTML = genderBadge(s.gender);
     document.getElementById('detail-date').textContent = fmtDate(s.date_passed);
     document.getElementById('detail-status').innerHTML = statusBadge(s.status);
@@ -1298,6 +1313,7 @@
     document.getElementById('style-modal-title').textContent = style ? 'Edit Style' : 'Add Style';
     document.getElementById('style-name').value   = style ? style.style_name : '';
     document.getElementById('style-number').value = style ? (style.style_number || '') : '';
+    document.getElementById('style-brand').value  = style ? (style.brand || '') : '';
     document.getElementById('style-gender').value = style ? style.gender : '';
     document.getElementById('style-date').value   = style ? (style.date_passed || '') : '';
     document.getElementById('style-status').value = style ? style.status : 'Spec Ready';
@@ -1421,6 +1437,7 @@
     const payload = {
       style_name:    name,
       style_number:  document.getElementById('style-number').value.trim() || null,
+      brand:         document.getElementById('style-brand').value || null,
       gender,
       date_passed:   document.getElementById('style-date').value || null,
       status:        document.getElementById('style-status').value,
