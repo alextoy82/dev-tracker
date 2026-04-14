@@ -863,10 +863,22 @@
         <label>Notes</label>
         <textarea id="quote-notes" placeholder="MOQ, lead time, materials, revision notes..."></textarea>
       </div>
+      <div class="form-group">
+        <label>Factory Sample Image</label>
+        <div id="quote-upload-area" class="upload-area" onclick="document.getElementById('quote-img-input').click()">
+          <div class="upload-icon">+</div>
+          <div class="upload-text">Click to upload factory image</div>
+          <input type="file" id="quote-img-input" accept="image/*" style="display:none" onchange="handleQuoteImageSelect(this)" />
+        </div>
+        <div id="quote-preview-wrap" class="hidden" style="position:relative;display:inline-block">
+          <img id="quote-img-preview" src="" style="max-width:100%;max-height:200px;border-radius:8px;display:block" />
+          <button class="remove-img-btn" onclick="removeQuoteImage(event)">×</button>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-quote')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveQuote()">Save Quote</button>
+      <button class="btn btn-primary" id="save-quote-btn" onclick="saveQuote()">Save Quote</button>
     </div>
   </div>
 </div>
@@ -889,6 +901,8 @@
   let currentQuotes  = [];
   let pendingFile      = null;
   let existingImgUrl   = null;
+  let pendingQuoteFile    = null;
+  let existingQuoteImgUrl = null;
   let pendingCostings  = [];
 
   // AUTH
@@ -1247,6 +1261,7 @@
       }).join('');
       return `
       <div class="quote-card">
+        ${q.factory_image_url ? `<img src="${q.factory_image_url}" style="width:100%;height:160px;object-fit:cover;border-radius:8px;display:block;margin-bottom:12px" />` : ''}
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
             <div class="quote-factory">${esc(q.factory_name)}</div>
@@ -1323,6 +1338,28 @@
     document.getElementById('img-preview').src = '';
     document.getElementById('preview-wrap').classList.add('hidden');
     document.getElementById('upload-area').classList.remove('hidden');
+  }
+
+  function handleQuoteImageSelect(input) {
+    if (!input.files || !input.files[0]) return;
+    pendingQuoteFile = input.files[0];
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('quote-img-preview').src = e.target.result;
+      document.getElementById('quote-preview-wrap').classList.remove('hidden');
+      document.getElementById('quote-upload-area').classList.add('hidden');
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+
+  function removeQuoteImage(e) {
+    e.stopPropagation();
+    pendingQuoteFile    = null;
+    existingQuoteImgUrl = null;
+    document.getElementById('quote-img-input').value = '';
+    document.getElementById('quote-img-preview').src = '';
+    document.getElementById('quote-preview-wrap').classList.add('hidden');
+    document.getElementById('quote-upload-area').classList.remove('hidden');
   }
 
   async function saveStyle() {
@@ -1497,6 +1534,21 @@
     }
     renderCostings();
     document.getElementById('quote-notes').value   = q ? (q.notes || '') : '';
+
+    // Factory image
+    pendingQuoteFile    = null;
+    existingQuoteImgUrl = q ? (q.factory_image_url || null) : null;
+    document.getElementById('quote-img-input').value = '';
+    if (existingQuoteImgUrl) {
+      document.getElementById('quote-img-preview').src = existingQuoteImgUrl;
+      document.getElementById('quote-preview-wrap').classList.remove('hidden');
+      document.getElementById('quote-upload-area').classList.add('hidden');
+    } else {
+      document.getElementById('quote-img-preview').src = '';
+      document.getElementById('quote-preview-wrap').classList.add('hidden');
+      document.getElementById('quote-upload-area').classList.remove('hidden');
+    }
+
     document.getElementById('modal-quote').classList.remove('hidden');
   }
 
@@ -1504,14 +1556,30 @@
     const factory = document.getElementById('quote-factory').value.trim();
     if (!factory) { toast('Factory name is required', 'error'); return; }
 
+    const btn = document.getElementById('save-quote-btn');
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+
+    let factoryImageUrl = existingQuoteImgUrl;
+
+    if (pendingQuoteFile) {
+      const ext  = pendingQuoteFile.name.split('.').pop();
+      const path = `factory-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await db.storage.from(BUCKET).upload(path, pendingQuoteFile, { upsert: true });
+      if (upErr) { toast('Image upload failed: ' + upErr.message, 'error'); btn.textContent = 'Save Quote'; btn.disabled = false; return; }
+      const { data: urlData } = db.storage.from(BUCKET).getPublicUrl(path);
+      factoryImageUrl = urlData.publicUrl;
+    }
+
     const payload = {
-      style_id:        currentStyle.id,
-      factory_name:    factory,
-      factory_contact: document.getElementById('quote-contact').value.trim() || null,
-      date_sent:       document.getElementById('quote-sent').value || null,
-      sample_eta:      document.getElementById('quote-eta').value || null,
-      is_sampling:     document.getElementById('quote-sampling').checked,
-      notes:           document.getElementById('quote-notes').value.trim() || null,
+      style_id:          currentStyle.id,
+      factory_name:      factory,
+      factory_contact:   document.getElementById('quote-contact').value.trim() || null,
+      date_sent:         document.getElementById('quote-sent').value || null,
+      sample_eta:        document.getElementById('quote-eta').value || null,
+      is_sampling:       document.getElementById('quote-sampling').checked,
+      notes:             document.getElementById('quote-notes').value.trim() || null,
+      factory_image_url: factoryImageUrl,
     };
     syncCostingsFromDOM();
     payload.costings = pendingCostings.filter(c => c.country || QTYS.some(qty => c['fob_'+qty] || c['ddp_'+qty]) || (c.custom_qtys||[]).some(cq => cq.label || cq.fob || cq.ddp));
@@ -1524,6 +1592,9 @@
     } else {
       ({ error } = await db.from('quotes').insert(payload));
     }
+
+    btn.textContent = 'Save Quote';
+    btn.disabled = false;
 
     if (error) { toast('Error: ' + error.message, 'error'); return; }
     toast(id ? 'Quote updated' : 'Quote added');
