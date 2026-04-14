@@ -1261,7 +1261,6 @@
       }).join('');
       return `
       <div class="quote-card">
-        ${q.factory_image_url ? `<img src="${q.factory_image_url}" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;display:block;margin-bottom:12px;background:#F0EFEB" />` : ''}
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
             <div class="quote-factory">${esc(q.factory_name)}</div>
@@ -1281,6 +1280,7 @@
           </div>
         </div>
         ${q.notes ? `<div class="quote-notes">${esc(q.notes)}</div>` : ''}
+        ${q.factory_image_url ? `<img src="${q.factory_image_url}" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;display:block;margin-top:12px;background:#F0EFEB" />` : ''}
         <div class="quote-actions">
           <button class="btn btn-secondary btn-sm" onclick="openQuoteModal('${q.id}')">Edit</button>
           <button class="btn btn-danger btn-sm" onclick="confirmDeleteQuote('${q.id}')">Delete</button>
