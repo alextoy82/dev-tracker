@@ -531,7 +531,7 @@
       transition: all 0.15s;
       background: #FAFAFA;
     }
-    .upload-area:hover { border-color: var(--green); background: white; }
+    .upload-area:hover, .upload-area.drag-over { border-color: var(--green); background: white; }
     .upload-icon { font-size: 28px; margin-bottom: 6px; }
     .upload-text { font-size: 13px; color: var(--muted); }
     .upload-text strong { color: var(--black); }
@@ -793,9 +793,9 @@
       </div>
       <div class="form-group">
         <label>Spec / Product Image</label>
-        <div class="upload-area" id="upload-area" onclick="document.getElementById('img-input').click()">
+        <div class="upload-area" id="upload-area" onclick="document.getElementById('img-input').click()" ondragover="handleDragOver(event,this)" ondragleave="handleDragLeave(event,this)" ondrop="handleDrop(event,this,'style')">
           <div class="upload-icon">+</div>
-          <div class="upload-text"><strong>Click to upload</strong> a spec or product photo</div>
+          <div class="upload-text"><strong>Click or drag</strong> a spec or product photo here</div>
           <input type="file" id="img-input" accept="image/*" style="display:none" onchange="handleImageSelect(this)" />
         </div>
         <div class="image-preview-wrap hidden" id="preview-wrap">
@@ -865,9 +865,9 @@
       </div>
       <div class="form-group">
         <label>Factory Sample Image</label>
-        <div id="quote-upload-area" class="upload-area" onclick="document.getElementById('quote-img-input').click()">
+        <div id="quote-upload-area" class="upload-area" onclick="document.getElementById('quote-img-input').click()" ondragover="handleDragOver(event,this)" ondragleave="handleDragLeave(event,this)" ondrop="handleDrop(event,this,'quote')">
           <div class="upload-icon">+</div>
-          <div class="upload-text">Click to upload factory image</div>
+          <div class="upload-text"><strong>Click or drag</strong> a factory image here</div>
           <input type="file" id="quote-img-input" accept="image/*" style="display:none" onchange="handleQuoteImageSelect(this)" />
         </div>
         <div id="quote-preview-wrap" class="hidden" style="position:relative;display:inline-block">
@@ -1360,6 +1360,41 @@
     document.getElementById('quote-img-preview').src = '';
     document.getElementById('quote-preview-wrap').classList.add('hidden');
     document.getElementById('quote-upload-area').classList.remove('hidden');
+  }
+
+  function handleDragOver(e, el) {
+    e.preventDefault();
+    el.classList.add('drag-over');
+  }
+
+  function handleDragLeave(e, el) {
+    el.classList.remove('drag-over');
+  }
+
+  function handleDrop(e, el, target) {
+    e.preventDefault();
+    el.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    if (target === 'quote') {
+      pendingQuoteFile = file;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        document.getElementById('quote-img-preview').src = ev.target.result;
+        document.getElementById('quote-preview-wrap').classList.remove('hidden');
+        document.getElementById('quote-upload-area').classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
+    } else {
+      pendingFile = file;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        document.getElementById('img-preview').src = ev.target.result;
+        document.getElementById('preview-wrap').classList.remove('hidden');
+        document.getElementById('upload-area').classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
   async function saveStyle() {
