@@ -654,6 +654,9 @@
     </div>
     <div class="filters">
       <button class="filter-btn active" id="filter-all" onclick="setFilter('all', this)">All</button>
+      <button class="filter-btn" onclick="setFilter('Sharper Image', this)">Sharper Image</button>
+      <button class="filter-btn" onclick="setFilter('Primo', this)">Primo</button>
+      <button class="filter-btn" onclick="setFilter('Swissmate', this)">Swissmate</button>
       <button class="filter-btn" onclick="setFilter('Womens', this)">Women's</button>
       <button class="filter-btn" onclick="setFilter('Mens', this)">Men's</button>
       <button class="filter-btn" onclick="setFilter('In Sampling', this)">In Sampling</button>
@@ -1053,7 +1056,7 @@
     let list = allStyles;
     if (activeFilters.size > 0) {
       list = list.filter(s => [...activeFilters].every(f => {
-        if (f === s.gender || f === s.status) return true;
+        if (f === s.gender || f === s.status || f === s.brand) return true;
         if (f === 'In Sampling') {
           const pastSampling = ['Sample Received', 'Revision Requested', 'Approved', 'Cancelled'];
           if (pastSampling.includes(s.status)) return false;
