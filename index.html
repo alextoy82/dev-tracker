@@ -553,6 +553,12 @@
       align-items: center;
       justify-content: center;
     }
+    .quote-img-thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .quote-img-thumb { position: relative; width: 96px; height: 96px; flex-shrink: 0; }
+    .quote-img-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; display: block; }
+    .remove-thumb { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0; }
+    .quote-card-gallery { display: flex; gap: 8px; overflow-x: auto; margin-top: 12px; padding-bottom: 2px; }
+    .quote-card-gallery img { height: 160px; width: auto; object-fit: contain; border-radius: 6px; flex-shrink: 0; background: white; max-width: 240px; }
 
     /* TOAST */
     .toast {
@@ -880,15 +886,12 @@
         <textarea id="quote-notes" placeholder="MOQ, lead time, materials, revision notes..."></textarea>
       </div>
       <div class="form-group">
-        <label>Factory Sample Image</label>
+        <label>Factory Sample Images</label>
+        <div id="quote-img-thumbs" class="quote-img-thumbs"></div>
         <div id="quote-upload-area" class="upload-area" onclick="document.getElementById('quote-img-input').click()" ondragover="handleDragOver(event,this)" ondragleave="handleDragLeave(event,this)" ondrop="handleDrop(event,this,'quote')">
           <div class="upload-icon">+</div>
-          <div class="upload-text"><strong>Click or drag</strong> a factory image here</div>
-          <input type="file" id="quote-img-input" accept="image/*" style="display:none" onchange="handleQuoteImageSelect(this)" />
-        </div>
-        <div id="quote-preview-wrap" class="hidden" style="position:relative;display:inline-block">
-          <img id="quote-img-preview" src="" style="max-width:100%;max-height:200px;border-radius:8px;display:block" />
-          <button class="remove-img-btn" onclick="removeQuoteImage(event)">×</button>
+          <div class="upload-text"><strong>Click or drag</strong> factory images here</div>
+          <input type="file" id="quote-img-input" accept="image/*" multiple style="display:none" onchange="handleQuoteImageSelect(this)" />
         </div>
       </div>
     </div>
@@ -917,8 +920,8 @@
   let currentQuotes  = [];
   let pendingFile      = null;
   let existingImgUrl   = null;
-  let pendingQuoteFile    = null;
-  let existingQuoteImgUrl = null;
+  let pendingQuoteFiles    = [];
+  let existingQuoteImgUrls = [];
   let pendingCostings  = [];
 
   // AUTH
@@ -1298,7 +1301,12 @@
           </div>
         </div>
         ${q.notes ? `<div class="quote-notes">${esc(q.notes)}</div>` : ''}
-        ${q.factory_image_url ? `<img src="${q.factory_image_url}" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;display:block;margin-top:12px;background:white" />` : ''}
+        ${(() => {
+          const imgs = (q.image_urls && q.image_urls.length) ? q.image_urls : (q.factory_image_url ? [q.factory_image_url] : []);
+          if (!imgs.length) return '';
+          if (imgs.length === 1) return `<img src="${imgs[0]}" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;display:block;margin-top:12px;background:white" />`;
+          return `<div class="quote-card-gallery">${imgs.map(url => `<img src="${url}" />`).join('')}</div>`;
+        })()}
         <div class="quote-actions">
           <button class="btn btn-secondary btn-sm" onclick="openQuoteModal('${q.id}')">Edit</button>
           <button class="btn btn-danger btn-sm" onclick="confirmDeleteQuote('${q.id}')">Delete</button>
@@ -1360,25 +1368,42 @@
   }
 
   function handleQuoteImageSelect(input) {
-    if (!input.files || !input.files[0]) return;
-    pendingQuoteFile = input.files[0];
-    const reader = new FileReader();
-    reader.onload = e => {
-      document.getElementById('quote-img-preview').src = e.target.result;
-      document.getElementById('quote-preview-wrap').classList.remove('hidden');
-      document.getElementById('quote-upload-area').classList.add('hidden');
-    };
-    reader.readAsDataURL(input.files[0]);
+    if (!input.files || !input.files.length) return;
+    Array.from(input.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        pendingQuoteFiles.push({ file, preview: e.target.result });
+        renderQuoteImgGallery();
+      };
+      reader.readAsDataURL(file);
+    });
+    input.value = '';
   }
 
-  function removeQuoteImage(e) {
-    e.stopPropagation();
-    pendingQuoteFile    = null;
-    existingQuoteImgUrl = null;
-    document.getElementById('quote-img-input').value = '';
-    document.getElementById('quote-img-preview').src = '';
-    document.getElementById('quote-preview-wrap').classList.add('hidden');
-    document.getElementById('quote-upload-area').classList.remove('hidden');
+  function renderQuoteImgGallery() {
+    const container = document.getElementById('quote-img-thumbs');
+    if (!container) return;
+    const existingHtml = existingQuoteImgUrls.map((url, i) => `
+      <div class="quote-img-thumb">
+        <img src="${url}" />
+        <button class="remove-thumb" onclick="removeExistingQuoteImg(${i})">&times;</button>
+      </div>`).join('');
+    const pendingHtml = pendingQuoteFiles.map((pf, i) => `
+      <div class="quote-img-thumb">
+        <img src="${pf.preview}" />
+        <button class="remove-thumb" onclick="removePendingQuoteImg(${i})">&times;</button>
+      </div>`).join('');
+    container.innerHTML = existingHtml + pendingHtml;
+  }
+
+  function removeExistingQuoteImg(i) {
+    existingQuoteImgUrls.splice(i, 1);
+    renderQuoteImgGallery();
+  }
+
+  function removePendingQuoteImg(i) {
+    pendingQuoteFiles.splice(i, 1);
+    renderQuoteImgGallery();
   }
 
   function handleDragOver(e, el) {
@@ -1396,14 +1421,14 @@
     const file = e.dataTransfer.files[0];
     if (!file || !file.type.startsWith('image/')) return;
     if (target === 'quote') {
-      pendingQuoteFile = file;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        document.getElementById('quote-img-preview').src = ev.target.result;
-        document.getElementById('quote-preview-wrap').classList.remove('hidden');
-        document.getElementById('quote-upload-area').classList.add('hidden');
-      };
-      reader.readAsDataURL(file);
+      Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')).forEach(f => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          pendingQuoteFiles.push({ file: f, preview: ev.target.result });
+          renderQuoteImgGallery();
+        };
+        reader.readAsDataURL(f);
+      });
     } else {
       pendingFile = file;
       const reader = new FileReader();
@@ -1590,19 +1615,12 @@
     renderCostings();
     document.getElementById('quote-notes').value   = q ? (q.notes || '') : '';
 
-    // Factory image
-    pendingQuoteFile    = null;
-    existingQuoteImgUrl = q ? (q.factory_image_url || null) : null;
+    // Factory images
+    pendingQuoteFiles = [];
+    const legacyUrl = q && q.factory_image_url && !(q.image_urls && q.image_urls.length) ? [q.factory_image_url] : [];
+    existingQuoteImgUrls = q ? [...(q.image_urls || []), ...legacyUrl] : [];
     document.getElementById('quote-img-input').value = '';
-    if (existingQuoteImgUrl) {
-      document.getElementById('quote-img-preview').src = existingQuoteImgUrl;
-      document.getElementById('quote-preview-wrap').classList.remove('hidden');
-      document.getElementById('quote-upload-area').classList.add('hidden');
-    } else {
-      document.getElementById('quote-img-preview').src = '';
-      document.getElementById('quote-preview-wrap').classList.add('hidden');
-      document.getElementById('quote-upload-area').classList.remove('hidden');
-    }
+    renderQuoteImgGallery();
 
     document.getElementById('modal-quote').classList.remove('hidden');
   }
@@ -1615,16 +1633,16 @@
     btn.textContent = 'Saving...';
     btn.disabled = true;
 
-    let factoryImageUrl = existingQuoteImgUrl;
-
-    if (pendingQuoteFile) {
-      const ext  = pendingQuoteFile.name.split('.').pop();
+    const uploadedUrls = [];
+    for (const { file } of pendingQuoteFiles) {
+      const ext  = file.name.split('.').pop();
       const path = `factory-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: upErr } = await db.storage.from(BUCKET).upload(path, pendingQuoteFile, { upsert: true });
+      const { error: upErr } = await db.storage.from(BUCKET).upload(path, file, { upsert: true });
       if (upErr) { toast('Image upload failed: ' + upErr.message, 'error'); btn.textContent = 'Save Quote'; btn.disabled = false; return; }
       const { data: urlData } = db.storage.from(BUCKET).getPublicUrl(path);
-      factoryImageUrl = urlData.publicUrl;
+      uploadedUrls.push(urlData.publicUrl);
     }
+    const allImageUrls = [...existingQuoteImgUrls, ...uploadedUrls];
 
     const payload = {
       style_id:          currentStyle.id,
@@ -1634,7 +1652,8 @@
       sample_eta:        document.getElementById('quote-eta').value || null,
       is_sampling:       document.getElementById('quote-sampling').checked,
       notes:             document.getElementById('quote-notes').value.trim() || null,
-      factory_image_url: factoryImageUrl,
+      factory_image_url: allImageUrls[0] || null,
+      image_urls:        allImageUrls,
     };
     syncCostingsFromDOM();
     payload.costings = pendingCostings.filter(c => c.country || QTYS.some(qty => c['fob_'+qty] || c['ddp_'+qty]) || (c.custom_qtys||[]).some(cq => cq.label || cq.fob || cq.ddp));
