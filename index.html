@@ -561,6 +561,19 @@
     .quote-card-gallery { display: flex; gap: 8px; overflow-x: auto; margin-top: 12px; padding-bottom: 2px; }
     .quote-card-gallery img { height: 160px; width: auto; object-fit: contain; border-radius: 6px; flex-shrink: 0; background: white; max-width: 240px; }
 
+    /* IMPORT PREVIEW */
+    .import-section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #888; margin: 14px 0 6px; }
+    .import-item { padding: 10px 12px; border-radius: 3px; margin-bottom: 6px; }
+    .import-item-add { background: #F0FBF0; border: 1px solid #C6F0C6; }
+    .import-item-update { background: #FFFBEB; border: 1px solid #FDE68A; }
+    .import-item-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .import-sku { font-weight: 400; color: #888; font-size: 12px; margin-left: 6px; }
+    .import-item-detail { font-size: 12px; color: #666; }
+    .import-change { font-size: 12px; color: #555; margin-top: 3px; }
+    .import-from { color: #DC2626; text-decoration: line-through; }
+    .import-to { color: #15803D; font-weight: 600; }
+    .import-note { font-size: 12px; color: #888; padding: 10px 0 14px; border-bottom: 1px solid #F0F0F0; margin-bottom: 4px; }
+
     /* TOAST */
     .toast {
       position: fixed;
@@ -641,6 +654,8 @@
     <div class="header-actions">
       <button class="btn btn-white btn-sm" onclick="exportCSV()"><span class="lbl-full">Export CSV</span><span class="lbl-short">CSV</span></button>
       <button class="btn btn-white btn-sm" onclick="exportPDF()"><span class="lbl-full">Export PDF</span><span class="lbl-short">PDF</span></button>
+      <button class="btn btn-white btn-sm" onclick="openImportCSV()"><span class="lbl-full">Import CSV</span><span class="lbl-short">Import</span></button>
+      <input type="file" id="import-file-input" accept=".csv" style="display:none" onchange="handleImportFile(this)" />
       <button class="btn btn-white btn-sm" onclick="openStyleModal()"><span class="lbl-full">+ Add Style</span><span class="lbl-short">+ Add</span></button>
       <button class="btn btn-white btn-sm" onclick="logout()"><span class="lbl-full">Sign Out</span><span class="lbl-short">Out</span></button>
     </div>
@@ -899,6 +914,22 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-quote')">Cancel</button>
       <button class="btn btn-primary" id="save-quote-btn" onclick="saveQuote()">Save Quote</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT PREVIEW MODAL -->
+<div id="modal-import" class="modal-overlay hidden">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <div class="modal-title">Import CSV</div>
+      <button class="modal-close" onclick="closeImportModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="import-preview-body" style="max-height:58vh;overflow-y:auto">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+      <button class="btn btn-primary" id="import-apply-btn" onclick="applyImport()" disabled>Apply Changes</button>
     </div>
   </div>
 </div>
@@ -2189,6 +2220,318 @@ ${comments.length ? `
   document.querySelectorAll('.modal-overlay').forEach(el => {
     el.addEventListener('click', e => { if (e.target === el) el.classList.add('hidden'); });
   });
+
+  // CSV IMPORT
+  function openImportCSV() {
+    document.getElementById('import-file-input').value = '';
+    document.getElementById('import-file-input').click();
+  }
+
+  function closeImportModal() {
+    window._importPlan = null;
+    document.getElementById('modal-import').classList.add('hidden');
+  }
+
+  async function handleImportFile(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    document.getElementById('import-preview-body').innerHTML = '<div class="spinner"></div>';
+    document.getElementById('import-apply-btn').disabled = true;
+    document.getElementById('import-apply-btn').textContent = 'Apply Changes';
+    document.getElementById('modal-import').classList.remove('hidden');
+
+    try {
+      const text = await file.text();
+      const rows = parseCSVText(text);
+      if (rows.length < 2) throw new Error('CSV appears empty or has no data rows.');
+
+      const { data: allQuotesFull } = await db.from('quotes').select('*');
+      const styleGroups = groupImportRows(rows);
+      if (!styleGroups.length) throw new Error('No valid style rows found in CSV.');
+
+      const plan = buildImportPlan(styleGroups, allQuotesFull || []);
+      window._importPlan = plan;
+      renderImportPreview(plan);
+    } catch (e) {
+      document.getElementById('import-preview-body').innerHTML =
+        `<p style="color:#DC2626;font-size:14px">Error: ${esc(e.message)}</p>`;
+    }
+  }
+
+  function parseCSVText(text) {
+    const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    const rows = [];
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const row = [];
+      let col = '', inQuote = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuote) {
+          if (ch === '"' && line[i + 1] === '"') { col += '"'; i++; }
+          else if (ch === '"') { inQuote = false; }
+          else { col += ch; }
+        } else {
+          if (ch === '"') { inQuote = true; }
+          else if (ch === ',') { row.push(col.trim()); col = ''; }
+          else { col += ch; }
+        }
+      }
+      row.push(col.trim());
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  function groupImportRows(rows) {
+    // rows[0] = headers, rows[1+] = data
+    const groups = [];
+    let current = null;
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const styleName = r[0];
+      if (styleName === 'COMMENTS') break; // per-style CSV has comments section at end
+      if (styleName) {
+        current = {
+          style_name: styleName,
+          style_number: r[1] || null,
+          gender: r[2] === "Women's" ? 'Womens' : 'Mens',
+          date_passed: r[3] || null,
+          status: r[4] || 'Spec Ready',
+          notes: r[5] || null,
+          quotes: [],
+        };
+        groups.push(current);
+      }
+      const factoryName = r[6];
+      if (factoryName && current) {
+        const q = {
+          factory_name: factoryName,
+          country:        r[7] || null,
+          factory_contact:r[8] || null,
+          date_sent:      r[9] || null,
+          sample_eta:     r[10] || null,
+          notes:          r[23] || null,
+        };
+        QTYS.forEach((qty, idx) => {
+          q[`fob_${qty}`] = r[11 + idx * 2] || null;
+          q[`ddp_${qty}`] = r[12 + idx * 2] || null;
+        });
+        current.quotes.push(q);
+      }
+    }
+    return groups;
+  }
+
+  function findMatchingStyle(imported) {
+    if (imported.style_number) {
+      const m = allStyles.find(s => s.style_number &&
+        s.style_number.toLowerCase() === imported.style_number.toLowerCase());
+      if (m) return m;
+    }
+    return allStyles.find(s =>
+      s.style_name.toLowerCase() === imported.style_name.toLowerCase()) || null;
+  }
+
+  function getEffectivePricing(q) {
+    // Prefer flat fields; fall back to first costings entry
+    const hasFlat = QTYS.some(qty => q[`fob_${qty}`] || q[`ddp_${qty}`]);
+    if (hasFlat) return q;
+    if (q.costings && q.costings.length) return q.costings[0];
+    return {};
+  }
+
+  function detectStyleChanges(existing, imported) {
+    const changes = {};
+    for (const [key, label] of [
+      ['style_name','Style Name'], ['style_number','SKU'], ['gender','Gender'],
+      ['date_passed','Date Passed'], ['status','Status'], ['notes','Notes'],
+    ]) {
+      const from = (existing[key] || '').toString().trim();
+      const to   = (imported[key] || '').toString().trim();
+      if (from !== to) changes[key] = { label, from: from || '—', to: to || '—' };
+    }
+    return changes;
+  }
+
+  function detectQuoteChanges(existingQ, importedQ) {
+    const changes = {};
+    const src = getEffectivePricing(existingQ);
+    const fields = [
+      ['factory_contact','Contact'], ['country','Country'],
+      ['date_sent','Date Passed'], ['sample_eta','Sample ETA'], ['notes','Notes'],
+      ...QTYS.flatMap(qty => [
+        [`fob_${qty}`, `FOB ${qty.toUpperCase()}`],
+        [`ddp_${qty}`, `DDP ${qty.toUpperCase()}`],
+      ]),
+    ];
+    for (const [key, label] of fields) {
+      const from = ((src[key] || existingQ[key]) || '').toString().trim();
+      const to   = (importedQ[key] || '').toString().trim();
+      if (from !== to) changes[key] = { label, from: from || '—', to: to || '—' };
+    }
+    return changes;
+  }
+
+  function buildImportPlan(styleGroups, allQuotesFull) {
+    const plan = { toAdd: [], toUpdate: [], unchanged: [] };
+    for (const imported of styleGroups) {
+      const existing = findMatchingStyle(imported);
+      if (!existing) { plan.toAdd.push({ imported }); continue; }
+
+      const styleChanges = detectStyleChanges(existing, imported);
+      const existingQuotes = allQuotesFull.filter(q => q.style_id === existing.id);
+      const quoteToAdd = [], quoteToUpdate = [];
+
+      for (const impQ of imported.quotes) {
+        const existingQ = existingQuotes.find(q =>
+          q.factory_name.toLowerCase() === impQ.factory_name.toLowerCase());
+        if (!existingQ) {
+          quoteToAdd.push(impQ);
+        } else {
+          quoteToUpdate.push({ existing: existingQ, imported: impQ, changes: detectQuoteChanges(existingQ, impQ) });
+        }
+      }
+
+      const hasChanges = Object.keys(styleChanges).length > 0 ||
+        quoteToAdd.length > 0 ||
+        quoteToUpdate.some(q => Object.keys(q.changes).length > 0);
+
+      if (hasChanges) {
+        plan.toUpdate.push({ existing, imported, changes: styleChanges, quoteToAdd, quoteToUpdate });
+      } else {
+        plan.unchanged.push({ existing });
+      }
+    }
+    return plan;
+  }
+
+  function renderImportPreview(plan) {
+    const totalNewQuotes = plan.toAdd.reduce((a, i) => a + i.imported.quotes.length, 0) +
+      plan.toUpdate.reduce((a, i) => a + i.quoteToAdd.length, 0);
+    const totalUpdatedQuotes = plan.toUpdate.reduce((a, i) =>
+      a + i.quoteToUpdate.filter(q => Object.keys(q.changes).length > 0).length, 0);
+
+    const totalActions = plan.toAdd.length + plan.toUpdate.length + totalNewQuotes + totalUpdatedQuotes;
+
+    if (totalActions === 0) {
+      document.getElementById('import-preview-body').innerHTML =
+        `<p style="color:#888;font-size:14px;padding:8px 0">No changes detected. Your database already matches this CSV.</p>`;
+      document.getElementById('import-apply-btn').disabled = true;
+      return;
+    }
+
+    const summaryParts = [];
+    if (plan.toAdd.length) summaryParts.push(`<strong>${plan.toAdd.length}</strong> new style${plan.toAdd.length !== 1 ? 's' : ''}`);
+    if (plan.toUpdate.length) summaryParts.push(`<strong>${plan.toUpdate.length}</strong> style${plan.toUpdate.length !== 1 ? 's' : ''} to update`);
+    if (totalNewQuotes) summaryParts.push(`<strong>${totalNewQuotes}</strong> new quote${totalNewQuotes !== 1 ? 's' : ''}`);
+    if (totalUpdatedQuotes) summaryParts.push(`<strong>${totalUpdatedQuotes}</strong> quote${totalUpdatedQuotes !== 1 ? 's' : ''} to update`);
+    if (plan.unchanged.length) summaryParts.push(`<strong>${plan.unchanged.length}</strong> unchanged`);
+
+    let html = `<div class="import-note">Styles and quotes not in this CSV will not be touched. Images are preserved.</div>`;
+    html += `<div style="font-size:13px;color:#555;margin-bottom:14px">${summaryParts.join(' &nbsp;&middot;&nbsp; ')}</div>`;
+
+    if (plan.toAdd.length) {
+      html += `<div class="import-section-title">New Styles</div>`;
+      html += plan.toAdd.map(({ imported }) => `
+        <div class="import-item import-item-add">
+          <div class="import-item-name">+ ${esc(imported.style_name)}<span class="import-sku">${imported.style_number ? esc(imported.style_number) : ''}</span></div>
+          <div class="import-item-detail">${imported.gender === 'Womens' ? "Women's" : "Men's"} &middot; ${esc(imported.status)}${imported.quotes.length ? ` &middot; ${imported.quotes.length} quote${imported.quotes.length !== 1 ? 's' : ''}` : ''}</div>
+        </div>`).join('');
+    }
+
+    if (plan.toUpdate.length) {
+      html += `<div class="import-section-title">Updates</div>`;
+      html += plan.toUpdate.map(({ existing, imported, changes, quoteToAdd, quoteToUpdate }) => {
+        const styleLines = Object.values(changes).map(c =>
+          `<div class="import-change">${esc(c.label)}: <span class="import-from">${esc(c.from)}</span> &rarr; <span class="import-to">${esc(c.to)}</span></div>`).join('');
+        const newQLines = quoteToAdd.map(q =>
+          `<div class="import-change">+ New quote: ${esc(q.factory_name)}</div>`).join('');
+        const updQLines = quoteToUpdate.filter(q => Object.keys(q.changes).length > 0).map(({ existing: eq, changes: qc }) => {
+          const priceChanged = Object.keys(qc).some(k => k.startsWith('fob_') || k.startsWith('ddp_'));
+          const otherLines = Object.values(qc)
+            .filter(c => !c.label.startsWith('FOB') && !c.label.startsWith('DDP'))
+            .map(c => `${esc(c.label)}: <span class="import-from">${esc(c.from)}</span> &rarr; <span class="import-to">${esc(c.to)}</span>`).join(', ');
+          const detail = [priceChanged ? 'pricing updated' : '', otherLines].filter(Boolean).join('; ');
+          return `<div class="import-change">&uarr; ${esc(eq.factory_name)}: ${detail}</div>`;
+        }).join('');
+        return `<div class="import-item import-item-update">
+          <div class="import-item-name">&uarr; ${esc(existing.style_name)}<span class="import-sku">${existing.style_number ? esc(existing.style_number) : ''}</span></div>
+          ${styleLines}${newQLines}${updQLines}
+        </div>`;
+      }).join('');
+    }
+
+    if (plan.unchanged.length) {
+      html += `<div class="import-section-title">No Changes</div>`;
+      html += `<div style="font-size:12px;color:#AAA;padding:4px 0">${plan.unchanged.map(u => esc(u.existing.style_name)).join(', ')}</div>`;
+    }
+
+    document.getElementById('import-preview-body').innerHTML = html;
+    document.getElementById('import-apply-btn').textContent = `Apply ${totalActions} Change${totalActions !== 1 ? 's' : ''}`;
+    document.getElementById('import-apply-btn').disabled = false;
+  }
+
+  async function applyImport() {
+    const plan = window._importPlan;
+    if (!plan) return;
+    const btn = document.getElementById('import-apply-btn');
+    btn.textContent = 'Applying...';
+    btn.disabled = true;
+    let errors = 0;
+
+    function buildQuotePayload(styleId, q) {
+      const costings = q.country ? [Object.assign({ country: q.country },
+        Object.fromEntries(QTYS.flatMap(qty => [[`fob_${qty}`, q[`fob_${qty}`] || null], [`ddp_${qty}`, q[`ddp_${qty}`] || null]]))
+      )] : [];
+      const flat = Object.fromEntries(QTYS.flatMap(qty => [[`fob_${qty}`, q[`fob_${qty}`] || null], [`ddp_${qty}`, q[`ddp_${qty}`] || null]]));
+      return { style_id: styleId, factory_name: q.factory_name, factory_contact: q.factory_contact,
+        country: q.country, date_sent: q.date_sent, sample_eta: q.sample_eta,
+        notes: q.notes, costings, ...flat };
+    }
+
+    // Add new styles + their quotes
+    for (const { imported } of plan.toAdd) {
+      const { data, error } = await db.from('styles').insert({
+        style_name: imported.style_name, style_number: imported.style_number,
+        gender: imported.gender, date_passed: imported.date_passed,
+        status: imported.status, notes: imported.notes,
+      }).select().single();
+      if (error) { errors++; continue; }
+      for (const q of imported.quotes) {
+        const { error: qe } = await db.from('quotes').insert(buildQuotePayload(data.id, q));
+        if (qe) errors++;
+      }
+    }
+
+    // Update existing styles + their quotes
+    for (const { existing, imported, changes, quoteToAdd, quoteToUpdate } of plan.toUpdate) {
+      if (Object.keys(changes).length > 0) {
+        const { error } = await db.from('styles').update({
+          style_name: imported.style_name, style_number: imported.style_number,
+          gender: imported.gender, date_passed: imported.date_passed,
+          status: imported.status, notes: imported.notes,
+        }).eq('id', existing.id);
+        if (error) errors++;
+      }
+      for (const q of quoteToAdd) {
+        const { error } = await db.from('quotes').insert(buildQuotePayload(existing.id, q));
+        if (error) errors++;
+      }
+      for (const { existing: eq, imported: impQ, changes: qc } of quoteToUpdate) {
+        if (Object.keys(qc).length === 0) continue;
+        const payload = buildQuotePayload(existing.id, impQ);
+        delete payload.style_id;
+        const { error } = await db.from('quotes').update(payload).eq('id', eq.id);
+        if (error) errors++;
+      }
+    }
+
+    closeImportModal();
+    toast(errors ? `Import done (${errors} error${errors !== 1 ? 's' : ''})` : 'Import complete');
+    await loadStyles();
+    if (currentStyle) await loadQuotes(currentStyle.id);
+  }
 
   // INIT — auth state handled by onAuthStateChange above
 </script>
