@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src https://eiykvjfutqdrvwsymdtx.supabase.co; img-src 'self' https://eiykvjfutqdrvwsymdtx.supabase.co data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com;" />
   <title>Dev Tracker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -902,7 +903,23 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- CONFIRM MODAL -->
+<div id="modal-confirm" class="modal-overlay hidden">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title" id="confirm-title">Confirm</div>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-message" style="font-size:14px;color:#444;line-height:1.5;margin:0"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.1/dist/umd/supabase.min.js" integrity="sha384-sfbOag7cEcqn2DK53T/iBNAH/2cMCf7bSzJDwBhV117A0z/NIj9Usei1jKIBY1Ae" crossorigin="anonymous"></script>
 <script>
   // CONFIG
   const SUPABASE_URL = 'https://eiykvjfutqdrvwsymdtx.supabase.co';
@@ -925,18 +942,55 @@
   let pendingCostings  = [];
 
   // AUTH
+  let loginFailCount = 0;
+  let loginLockUntil = 0;
+
   async function login() {
+    const now = Date.now();
+    const btn = document.getElementById('login-btn');
+    const errEl = document.getElementById('login-error');
+
+    if (now < loginLockUntil) {
+      const secs = Math.ceil((loginLockUntil - now) / 1000);
+      errEl.textContent = `Too many attempts. Try again in ${secs}s.`;
+      errEl.style.display = 'block';
+      return;
+    }
+
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-pw').value;
-    const btn = document.getElementById('login-btn');
     btn.textContent = 'Signing in...';
     btn.disabled = true;
-    document.getElementById('login-error').style.display = 'none';
+    errEl.style.display = 'none';
+
     const { error } = await db.auth.signInWithPassword({ email, password });
-    btn.textContent = 'Sign In';
+
     btn.disabled = false;
     if (error) {
-      document.getElementById('login-error').style.display = 'block';
+      loginFailCount++;
+      if (loginFailCount >= 5) {
+        const lockSecs = Math.min(60 * Math.pow(2, loginFailCount - 5), 900);
+        loginLockUntil = Date.now() + lockSecs * 1000;
+        errEl.textContent = `Too many failed attempts. Locked for ${lockSecs}s.`;
+        const countdown = setInterval(() => {
+          const remaining = Math.ceil((loginLockUntil - Date.now()) / 1000);
+          if (remaining <= 0) {
+            clearInterval(countdown);
+            errEl.textContent = 'Incorrect email or password.';
+            btn.textContent = 'Sign In';
+          } else {
+            errEl.textContent = `Too many failed attempts. Try again in ${remaining}s.`;
+          }
+        }, 1000);
+      } else {
+        errEl.textContent = 'Incorrect email or password.';
+      }
+      errEl.style.display = 'block';
+      btn.textContent = 'Sign In';
+    } else {
+      loginFailCount = 0;
+      loginLockUntil = 0;
+      btn.textContent = 'Sign In';
     }
   }
 
@@ -985,7 +1039,7 @@
   };
 
   function statusBadge(s) {
-    return `<span class="badge ${STATUS_CLASS[s] || 'badge-spec-ready'}">${s}</span>`;
+    return `<span class="badge ${STATUS_CLASS[s] || 'badge-spec-ready'}">${esc(s)}</span>`;
   }
   function genderBadge(g) {
     return g === 'Womens'
@@ -1126,7 +1180,7 @@
         <div onclick="openDetail('${s.id}')">
           <div class="style-card-image">
             ${s.spec_image_url
-              ? `<img src="${s.spec_image_url}" alt="${esc(s.style_name)}" loading="lazy" />`
+              ? `<img src="${safeImgUrl(s.spec_image_url)}" alt="${esc(s.style_name)}" loading="lazy" />`
               : `<span class="no-image-placeholder">No image</span>`}
           </div>
           <div class="style-card-body">
@@ -1182,7 +1236,7 @@
 
     const imgWrap = document.getElementById('detail-img-wrap');
     imgWrap.innerHTML = s.spec_image_url
-      ? `<img src="${s.spec_image_url}" alt="${esc(s.style_name)}" style="width:100%;height:100%;object-fit:cover" />`
+      ? `<img src="${safeImgUrl(s.spec_image_url)}" alt="${esc(s.style_name)}" style="width:100%;height:100%;object-fit:cover" />`
       : `<span style="color:#CCC;font-size:13px">No image</span>`;
 
     showView('detail');
@@ -1304,8 +1358,8 @@
         ${(() => {
           const imgs = (q.image_urls && q.image_urls.length) ? q.image_urls : (q.factory_image_url ? [q.factory_image_url] : []);
           if (!imgs.length) return '';
-          if (imgs.length === 1) return `<img src="${imgs[0]}" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;display:block;margin-top:12px;background:white" />`;
-          return `<div class="quote-card-gallery">${imgs.map(url => `<img src="${url}" />`).join('')}</div>`;
+          if (imgs.length === 1) return `<img src="${safeImgUrl(imgs[0])}" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;display:block;margin-top:12px;background:white" />`;
+          return `<div class="quote-card-gallery">${imgs.map(url => `<img src="${safeImgUrl(url)}" />`).join('')}</div>`;
         })()}
         <div class="quote-actions">
           <button class="btn btn-secondary btn-sm" onclick="openQuoteModal('${q.id}')">Edit</button>
@@ -1345,16 +1399,33 @@
     document.getElementById('modal-style').classList.remove('hidden');
   }
 
-  function handleImageSelect(input) {
+  const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+  async function validateImageFile(file) {
+    if (file.size > MAX_FILE_BYTES) return 'Image must be under 10 MB.';
+    const buf = await file.slice(0, 4).arrayBuffer();
+    const b = new Uint8Array(buf);
+    const isJpeg = b[0]===0xFF && b[1]===0xD8 && b[2]===0xFF;
+    const isPng  = b[0]===0x89 && b[1]===0x50 && b[2]===0x4E && b[3]===0x47;
+    const isGif  = b[0]===0x47 && b[1]===0x49 && b[2]===0x46;
+    const isWebP = b[0]===0x52 && b[1]===0x49 && b[2]===0x46 && b[3]===0x46;
+    if (!isJpeg && !isPng && !isGif && !isWebP) return 'Only JPEG, PNG, GIF, or WebP images are allowed.';
+    return null;
+  }
+
+  async function handleImageSelect(input) {
     if (!input.files || !input.files[0]) return;
-    pendingFile = input.files[0];
+    const file = input.files[0];
+    const err = await validateImageFile(file);
+    if (err) { toast(err, 'error'); input.value = ''; return; }
+    pendingFile = file;
     const reader = new FileReader();
     reader.onload = e => {
       document.getElementById('img-preview').src = e.target.result;
       document.getElementById('preview-wrap').classList.remove('hidden');
       document.getElementById('upload-area').classList.add('hidden');
     };
-    reader.readAsDataURL(input.files[0]);
+    reader.readAsDataURL(file);
   }
 
   function removeImage(e) {
@@ -1367,16 +1438,18 @@
     document.getElementById('upload-area').classList.remove('hidden');
   }
 
-  function handleQuoteImageSelect(input) {
+  async function handleQuoteImageSelect(input) {
     if (!input.files || !input.files.length) return;
-    Array.from(input.files).forEach(file => {
+    for (const file of Array.from(input.files)) {
+      const err = await validateImageFile(file);
+      if (err) { toast(err, 'error'); continue; }
       const reader = new FileReader();
       reader.onload = e => {
         pendingQuoteFiles.push({ file, preview: e.target.result });
         renderQuoteImgGallery();
       };
       reader.readAsDataURL(file);
-    });
+    }
     input.value = '';
   }
 
@@ -1385,7 +1458,7 @@
     if (!container) return;
     const existingHtml = existingQuoteImgUrls.map((url, i) => `
       <div class="quote-img-thumb">
-        <img src="${url}" />
+        <img src="${safeImgUrl(url)}" />
         <button class="remove-thumb" onclick="removeExistingQuoteImg(${i})">&times;</button>
       </div>`).join('');
     const pendingHtml = pendingQuoteFiles.map((pf, i) => `
@@ -1415,21 +1488,25 @@
     el.classList.remove('drag-over');
   }
 
-  function handleDrop(e, el, target) {
+  async function handleDrop(e, el, target) {
     e.preventDefault();
     el.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (!file || !file.type.startsWith('image/')) return;
     if (target === 'quote') {
-      Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')).forEach(f => {
+      for (const f of Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))) {
+        const err = await validateImageFile(f);
+        if (err) { toast(err, 'error'); continue; }
         const reader = new FileReader();
         reader.onload = ev => {
           pendingQuoteFiles.push({ file: f, preview: ev.target.result });
           renderQuoteImgGallery();
         };
         reader.readAsDataURL(f);
-      });
+      }
     } else {
+      const file = e.dataTransfer.files[0];
+      if (!file || !file.type.startsWith('image/')) return;
+      const err = await validateImageFile(file);
+      if (err) { toast(err, 'error'); return; }
       pendingFile = file;
       const reader = new FileReader();
       reader.onload = ev => {
@@ -1454,8 +1531,8 @@
     let imageUrl = existingImgUrl;
 
     if (pendingFile) {
-      const ext  = pendingFile.name.split('.').pop();
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const ext  = pendingFile.name.split('.').pop().toLowerCase();
+      const path = `${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await db.storage.from(BUCKET).upload(path, pendingFile, { upsert: true });
       if (upErr) { toast('Image upload failed: ' + upErr.message, 'error'); btn.textContent = 'Save Style'; btn.disabled = false; return; }
       const { data: urlData } = db.storage.from(BUCKET).getPublicUrl(path);
@@ -1496,11 +1573,25 @@
     }
   }
 
+  function showConfirm(title, message, onOk) {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    const btn = document.getElementById('confirm-ok-btn');
+    btn.onclick = () => { closeConfirm(); onOk(); };
+    document.getElementById('modal-confirm').classList.remove('hidden');
+  }
+
+  function closeConfirm() {
+    document.getElementById('modal-confirm').classList.add('hidden');
+  }
+
   function confirmDeleteStyle() {
     if (!currentStyle) return;
-    if (confirm(`Delete "${currentStyle.style_name}"?\n\nThis will also delete all factory quotes for this style.`)) {
-      deleteStyle();
-    }
+    showConfirm(
+      'Delete Style',
+      `Delete "${currentStyle.style_name}"? This will also delete all factory quotes and comments for this style. This cannot be undone.`,
+      deleteStyle
+    );
   }
 
   async function deleteStyle() {
@@ -1635,8 +1726,8 @@
 
     const uploadedUrls = [];
     for (const { file } of pendingQuoteFiles) {
-      const ext  = file.name.split('.').pop();
-      const path = `factory-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const ext  = file.name.split('.').pop().toLowerCase();
+      const path = `factory-${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await db.storage.from(BUCKET).upload(path, file, { upsert: true });
       if (upErr) { toast('Image upload failed: ' + upErr.message, 'error'); btn.textContent = 'Save Quote'; btn.disabled = false; return; }
       const { data: urlData } = db.storage.from(BUCKET).getPublicUrl(path);
@@ -1680,7 +1771,7 @@
   }
 
   function confirmDeleteQuote(id) {
-    if (confirm('Delete this factory quote?')) deleteQuote(id);
+    showConfirm('Delete Quote', 'Delete this factory quote? This cannot be undone.', () => deleteQuote(id));
   }
 
   async function deleteQuote(id) {
@@ -2021,7 +2112,7 @@
   ${s.style_number ? `<div style="font-size:13px;color:#888">SKU: ${esc(s.style_number)}</div>` : ''}
 </div>
 <div class="top-section">
-  ${s.spec_image_url ? `<img class="spec-img" src="${s.spec_image_url}" />` : ''}
+  ${s.spec_image_url ? `<img class="spec-img" src="${safeImgUrl(s.spec_image_url)}" />` : ''}
   <div class="meta-col">
     <div class="meta">
       <div class="meta-item"><span class="meta-label">Gender</span><span class="meta-value">${genderLabel}</span></div>
@@ -2079,6 +2170,15 @@ ${comments.length ? `
   function esc(str) {
     if (!str) return '';
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function safeImgUrl(url) {
+    if (!url) return '';
+    try {
+      const u = new URL(url);
+      if (u.origin === 'https://eiykvjfutqdrvwsymdtx.supabase.co') return esc(url);
+    } catch (_) {}
+    return '';
   }
 
   function closeModal(id) {
