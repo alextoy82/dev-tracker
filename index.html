@@ -1892,20 +1892,24 @@
     const allQuotes = quotes || [];
 
     const priceCols = QTYS.flatMap(qty => [`FOB ${qty.toUpperCase()}`, `DDP ${qty.toUpperCase()}`]);
+    const fmtColorSkus = s => (s.color_skus && s.color_skus.length)
+      ? s.color_skus.map(c => c.color ? `${c.color}: ${c.sku}` : c.sku).join('; ')
+      : '';
     const rows = [
-      ['Style Name','SKU Number','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Passed','Sample ETA',...priceCols,'Factory Notes']
+      ['Style Name','Master SKU','Color SKUs','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Passed','Sample ETA',...priceCols,'Factory Notes']
     ];
 
     for (const s of allStyles) {
       const styleQuotes = allQuotes.filter(q => q.style_id === s.id);
       const prices = q => QTYS.flatMap(qty => [q[`fob_${qty}`]||'', q[`ddp_${qty}`]||'']);
       if (styleQuotes.length === 0) {
-        rows.push([s.style_name, s.style_number||'', s.gender==='Womens'?"Women's":"Men's", s.date_passed||'', s.status, s.notes||'', '','','','','', ...QTYS.flatMap(()=>['','']), '']);
+        rows.push([s.style_name, s.style_number||'', fmtColorSkus(s), s.gender==='Womens'?"Women's":"Men's", s.date_passed||'', s.status, s.notes||'', '','','','','', ...QTYS.flatMap(()=>['','']), '']);
       } else {
         styleQuotes.forEach((q, i) => {
           rows.push([
             i === 0 ? s.style_name : '',
             i === 0 ? (s.style_number||'') : '',
+            i === 0 ? fmtColorSkus(s) : '',
             i === 0 ? (s.gender==='Womens'?"Women's":"Men's") : '',
             i === 0 ? (s.date_passed||'') : '',
             i === 0 ? s.status : '',
@@ -1956,7 +1960,8 @@
           ${imgHtml}
           <div class="card-body">
             <div class="card-name">${esc(s.style_name)}</div>
-            ${s.style_number ? `<div class="card-sku">${esc(s.style_number)}</div>` : ''}
+            ${s.style_number ? `<div class="card-sku">Master: ${esc(s.style_number)}</div>` : ''}
+            ${s.color_skus && s.color_skus.length ? `<div class="card-sku" style="color:#3EDB12">${s.color_skus.map(c => esc(c.color ? c.color+': '+c.sku : c.sku)).join(' &middot; ')}</div>` : ''}
             <div class="card-meta">${genderLabel} &middot; ${esc(s.status)}</div>
             ${s.date_passed ? `<div class="card-date">Passed ${fmtDate(s.date_passed)}</div>` : ''}
             ${factoryLine}
@@ -2004,10 +2009,14 @@
         const styleQuotes = allQuotes.filter(q => q.style_id === s.id);
         const genderLabel = s.gender === 'Womens' ? "Women's" : "Men's";
         const datePassed = s.date_passed ? fmtDate(s.date_passed) : '';
+        const colorSkuCell = s.color_skus && s.color_skus.length
+          ? s.color_skus.map(c => esc(c.color ? `${c.color}: ${c.sku}` : c.sku)).join('<br>')
+          : '';
         if (styleQuotes.length === 0) {
           rows.push(`<tr style="border-top:2px solid #E0DFDB">
             <td><strong>${esc(s.style_name)}</strong></td>
             <td>${esc(s.style_number || '')}</td>
+            <td style="color:#555">${colorSkuCell}</td>
             <td>${genderLabel}</td>
             <td>${esc(s.status)}</td>
             <td>${datePassed}</td>
@@ -2018,6 +2027,7 @@
             const styleInfo = i === 0 ? `
               <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB"><strong>${esc(s.style_name)}</strong></td>
               <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB">${esc(s.style_number || '')}</td>
+              <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB;color:#555">${colorSkuCell}</td>
               <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB">${genderLabel}</td>
               <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB">${esc(s.status)}</td>
               <td rowspan="${styleQuotes.length}" style="border-right:1px solid #E0DFDB">${datePassed}</td>
@@ -2057,7 +2067,7 @@
 </div>
 <table>
   <thead><tr>
-    <th>Style Name</th><th>SKU</th><th>Gender</th><th>Status</th><th>Date Passed</th>
+    <th>Style Name</th><th>Master SKU</th><th>Color SKUs</th><th>Gender</th><th>Status</th><th>Date Passed</th>
     <th>Factory</th><th>Country</th><th>Sample ETA</th>
   </tr></thead>
   <tbody>${rows.join('')}</tbody>
@@ -2086,18 +2096,22 @@
     const genderLabel = s.gender === 'Womens' ? "Women's" : "Men's";
 
     const priceCols = QTYS.flatMap(qty => [`FOB ${qty.toUpperCase()}`, `DDP ${qty.toUpperCase()}`]);
+    const colorSkuStr = (s.color_skus && s.color_skus.length)
+      ? s.color_skus.map(c => c.color ? `${c.color}: ${c.sku}` : c.sku).join('; ')
+      : '';
     const rows = [
-      ['Style Name','SKU Number','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Passed','Sample ETA',...priceCols,'Factory Notes']
+      ['Style Name','Master SKU','Color SKUs','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Passed','Sample ETA',...priceCols,'Factory Notes']
     ];
     const prices = q => QTYS.flatMap(qty => [q[`fob_${qty}`]||'', q[`ddp_${qty}`]||'']);
 
     if (qs.length === 0) {
-      rows.push([s.style_name, s.style_number||'', genderLabel, s.date_passed||'', s.status, s.notes||'', '','','','','', ...QTYS.flatMap(()=>['','']), '']);
+      rows.push([s.style_name, s.style_number||'', colorSkuStr, genderLabel, s.date_passed||'', s.status, s.notes||'', '','','','','', ...QTYS.flatMap(()=>['','']), '']);
     } else {
       qs.forEach((q, i) => {
         rows.push([
           i === 0 ? s.style_name : '',
           i === 0 ? (s.style_number||'') : '',
+          i === 0 ? colorSkuStr : '',
           i === 0 ? genderLabel : '',
           i === 0 ? (s.date_passed||'') : '',
           i === 0 ? s.status : '',
@@ -2213,7 +2227,10 @@
     <div class="pt">${esc(s.style_name)}</div>
     <div class="pn">Dev Tracker &mdash; Exported ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
   </div>
-  ${s.style_number ? `<div style="font-size:13px;color:#888">SKU: ${esc(s.style_number)}</div>` : ''}
+  <div style="text-align:right">
+    ${s.style_number ? `<div style="font-size:13px;color:#888">Master SKU: ${esc(s.style_number)}</div>` : ''}
+    ${s.color_skus && s.color_skus.length ? `<div style="font-size:11px;color:#555;margin-top:3px">${s.color_skus.map(c => esc(c.color ? `${c.color}: ${c.sku}` : c.sku)).join(' &nbsp;&middot;&nbsp; ')}</div>` : ''}
+  </div>
 </div>
 <div class="top-section">
   ${s.spec_image_url ? `<img class="spec-img" src="${safeImgUrl(s.spec_image_url)}" />` : ''}
