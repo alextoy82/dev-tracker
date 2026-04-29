@@ -179,6 +179,20 @@
     .style-card-body { padding: 16px; }
     .style-card-name { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
     .style-card-number { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .style-card-colors { font-size: 11px; color: #3EDB12; font-weight: 600; margin-top: 2px; }
+
+    /* COLOR SKU FORM */
+    .color-sku-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .color-sku-row input { flex: 1; }
+    .color-sku-remove { background: none; border: 1px solid var(--border); border-radius: 3px; padding: 7px 10px; cursor: pointer; color: #999; font-size: 13px; line-height: 1; transition: all 0.15s; flex-shrink: 0; }
+    .color-sku-remove:hover { border-color: #DC2626; color: #DC2626; background: #FEE2E2; }
+
+    /* COLOR SKU DETAIL */
+    .detail-color-skus { margin-top: 8px; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+    .detail-color-sku-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 12px; font-size: 13px; border-bottom: 1px solid #F5F5F5; }
+    .detail-color-sku-row:last-child { border-bottom: none; }
+    .detail-color-sku-color { color: var(--muted); font-size: 12px; }
+    .detail-color-sku-num { font-weight: 600; font-size: 13px; }
     .style-card-meta { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
     .style-card-date { font-size: 12px; color: var(--muted); margin-top: 8px; }
 
@@ -714,6 +728,7 @@
           <div class="detail-info">
             <div class="detail-name" id="detail-name"></div>
             <div class="detail-number" id="detail-number"></div>
+            <div id="detail-color-skus" class="detail-color-skus hidden"></div>
             <div class="detail-meta">
               <div class="detail-row">
                 <span class="detail-label">Brand</span>
@@ -785,9 +800,16 @@
           <input type="text" id="style-name" placeholder="e.g. Mini Tote" />
         </div>
         <div class="form-group">
-          <label>SKU Number</label>
+          <label>Master SKU</label>
           <input type="text" id="style-number" placeholder="e.g. HB-001" />
         </div>
+      </div>
+      <div class="form-group">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label style="margin:0">Color SKUs</label>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addColorSku()">+ Add Color</button>
+        </div>
+        <div id="color-skus-container"></div>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -968,6 +990,7 @@
   let currentQuotes  = [];
   let pendingFile      = null;
   let existingImgUrl   = null;
+  let pendingColorSkus = [];
   let pendingQuoteFiles    = [];
   let existingQuoteImgUrls = [];
   let pendingCostings  = [];
@@ -1156,7 +1179,8 @@
     if (query) {
       list = list.filter(s =>
         s.style_name.toLowerCase().includes(query) ||
-        (s.style_number && s.style_number.toLowerCase().includes(query))
+        (s.style_number && s.style_number.toLowerCase().includes(query)) ||
+        (s.color_skus && s.color_skus.some(c => c.sku.toLowerCase().includes(query) || c.color.toLowerCase().includes(query)))
       );
     }
     return list;
@@ -1190,7 +1214,10 @@
           const earliest = etaQ.length ? etaQ[0].sample_eta : null;
           return `<tr onclick="openDetail('${s.id}')">
             <td><strong>${esc(s.style_name)}</strong></td>
-            <td style="color:#6B6B6B">${esc(s.style_number || '')}</td>
+            <td style="color:#6B6B6B">
+              ${esc(s.style_number || '')}
+              ${s.color_skus && s.color_skus.length ? `<div style="font-size:11px;color:#3EDB12;font-weight:600;margin-top:2px">+${s.color_skus.length} color${s.color_skus.length > 1 ? 's' : ''}</div>` : ''}
+            </td>
             <td>${genderBadge(s.gender)}</td>
             <td>${statusBadge(s.status)}</td>
             <td style="color:#6B6B6B">${s.date_passed ? fmtDate(s.date_passed) : '<span style="color:#CCC">—</span>'}</td>
@@ -1217,6 +1244,7 @@
           <div class="style-card-body">
             <div class="style-card-name">${esc(s.style_name)}</div>
             ${s.style_number ? `<div class="style-card-number">${esc(s.style_number)}</div>` : ''}
+            ${s.color_skus && s.color_skus.length ? `<div class="style-card-colors">+${s.color_skus.length} color${s.color_skus.length > 1 ? 's' : ''}</div>` : ''}
             ${s.brand ? `<div class="style-card-number" style="color:#888">${esc(s.brand)}</div>` : ''}
             <div class="style-card-meta">
               ${genderBadge(s.gender)}
@@ -1251,7 +1279,19 @@
     currentStyle = s;
 
     document.getElementById('detail-name').textContent = s.style_name;
-    document.getElementById('detail-number').textContent = s.style_number || '';
+    document.getElementById('detail-number').textContent = s.style_number ? `Master SKU: ${s.style_number}` : '';
+
+    const colorSkusEl = document.getElementById('detail-color-skus');
+    if (s.color_skus && s.color_skus.length) {
+      colorSkusEl.innerHTML = s.color_skus.map(c =>
+        `<div class="detail-color-sku-row">
+          <span class="detail-color-sku-color">${esc(c.color || '—')}</span>
+          <span class="detail-color-sku-num">${esc(c.sku)}</span>
+        </div>`).join('');
+      colorSkusEl.classList.remove('hidden');
+    } else {
+      colorSkusEl.classList.add('hidden');
+    }
     document.getElementById('detail-brand').textContent = s.brand || '—';
     document.getElementById('detail-gender').innerHTML = genderBadge(s.gender);
     document.getElementById('detail-date').textContent = fmtDate(s.date_passed);
@@ -1401,6 +1441,36 @@
   }
 
   // STYLE MODAL
+  function renderColorSkus() {
+    const container = document.getElementById('color-skus-container');
+    if (!container) return;
+    if (pendingColorSkus.length === 0) {
+      container.innerHTML = '<div style="font-size:13px;color:#AAA;padding:6px 0">No color SKUs added yet.</div>';
+      return;
+    }
+    container.innerHTML = pendingColorSkus.map((c, i) => `
+      <div class="color-sku-row">
+        <input type="text" placeholder="Color (e.g. Black)" value="${esc(c.color || '')}"
+          oninput="pendingColorSkus[${i}].color = this.value" style="max-width:160px" />
+        <input type="text" placeholder="SKU (e.g. HB-001-BLK)" value="${esc(c.sku || '')}"
+          oninput="pendingColorSkus[${i}].sku = this.value" />
+        <button type="button" class="color-sku-remove" onclick="removeColorSku(${i})">&times;</button>
+      </div>`).join('');
+  }
+
+  function addColorSku() {
+    pendingColorSkus.push({ color: '', sku: '' });
+    renderColorSkus();
+    // Focus the new color input
+    const rows = document.querySelectorAll('.color-sku-row');
+    if (rows.length) rows[rows.length - 1].querySelector('input').focus();
+  }
+
+  function removeColorSku(i) {
+    pendingColorSkus.splice(i, 1);
+    renderColorSkus();
+  }
+
   function openStyleModal(style) {
     pendingFile    = null;
     existingImgUrl = style ? style.spec_image_url : null;
@@ -1409,6 +1479,8 @@
     document.getElementById('style-modal-title').textContent = style ? 'Edit Style' : 'Add Style';
     document.getElementById('style-name').value   = style ? style.style_name : '';
     document.getElementById('style-number').value = style ? (style.style_number || '') : '';
+    pendingColorSkus = style ? JSON.parse(JSON.stringify(style.color_skus || [])) : [];
+    renderColorSkus();
     document.getElementById('style-brand').value  = style ? (style.brand || '') : '';
     document.getElementById('style-gender').value = style ? style.gender : '';
     document.getElementById('style-date').value   = style ? (style.date_passed || '') : '';
@@ -1573,6 +1645,7 @@
     const payload = {
       style_name:    name,
       style_number:  document.getElementById('style-number').value.trim() || null,
+      color_skus:    pendingColorSkus.filter(c => c.sku.trim()),
       brand:         document.getElementById('style-brand').value || null,
       gender,
       date_passed:   document.getElementById('style-date').value || null,
