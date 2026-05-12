@@ -1220,7 +1220,7 @@
             <td>${genderBadge(s.gender)}</td>
             <td>${statusBadge(s.status)}</td>
             <td style="color:#6B6B6B">${s.date_passed ? fmtDate(s.date_passed) : '<span style="color:#CCC">—</span>'}</td>
-            <td style="color:#6B6B6B">${allQ.length || '<span style="color:#CCC">—</span>'}</td>
+            <td style="color:#6B6B6B">${allQ.length ? allQ.map(q => esc(q.factory_name)).join(', ') : '<span style="color:#CCC">—</span>'}</td>
             <td style="font-weight:${earliest ? '600' : '400'}">${earliest ? fmtDate(earliest) : '<span style="color:#CCC">—</span>'}</td>
           </tr>`;
         }).join('')}</tbody>
@@ -1249,6 +1249,7 @@
               ${genderBadge(s.gender)}
               ${statusBadge(s.status)}
             </div>
+            ${(() => { const fnames = allQuotesCache.filter(q => q.style_id === s.id).map(q => q.factory_name); return fnames.length ? `<div style="font-size:11px;color:#888;margin-top:3px">${fnames.map(esc).join(', ')}</div>` : ''; })()}
             ${s.date_passed ? `<div class="style-card-date">Passed ${fmtDate(s.date_passed)}</div>` : ''}
           </div>
         </div>
