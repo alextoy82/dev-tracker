@@ -728,7 +728,6 @@
           <div class="detail-info">
             <div class="detail-name" id="detail-name"></div>
             <div class="detail-number" id="detail-number"></div>
-            <div id="detail-color-skus" class="detail-color-skus hidden"></div>
             <div class="detail-meta">
               <div class="detail-row">
                 <span class="detail-label">Brand</span>
@@ -1281,17 +1280,6 @@
     document.getElementById('detail-name').textContent = s.style_name;
     document.getElementById('detail-number').textContent = s.style_number ? `Master SKU: ${s.style_number}` : '';
 
-    const colorSkusEl = document.getElementById('detail-color-skus');
-    if (s.color_skus && s.color_skus.length) {
-      colorSkusEl.innerHTML = s.color_skus.map(c =>
-        `<div class="detail-color-sku-row">
-          <span class="detail-color-sku-color">${esc(c.color || '—')}</span>
-          <span class="detail-color-sku-num">${esc(c.sku)}</span>
-        </div>`).join('');
-      colorSkusEl.classList.remove('hidden');
-    } else {
-      colorSkusEl.classList.add('hidden');
-    }
     document.getElementById('detail-brand').textContent = s.brand || '—';
     document.getElementById('detail-gender').innerHTML = genderBadge(s.gender);
     document.getElementById('detail-date').textContent = fmtDate(s.date_passed);
