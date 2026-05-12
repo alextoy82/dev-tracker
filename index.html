@@ -804,13 +804,6 @@
           <input type="text" id="style-number" placeholder="e.g. HB-001" />
         </div>
       </div>
-      <div class="form-group">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <label style="margin:0">Color SKUs</label>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="addColorSku()">+ Add Color</button>
-        </div>
-        <div id="color-skus-container"></div>
-      </div>
       <div class="form-row">
         <div class="form-group">
           <label>Brand</label>
@@ -911,6 +904,13 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+      </div>
+      <div class="form-group">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label style="margin:0">Color SKUs</label>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addColorSku()">+ Add Color</button>
+        </div>
+        <div id="color-skus-container"></div>
       </div>
       <div class="form-group">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -1425,6 +1425,7 @@
             <span class="quote-field-value">${fmtDate(q.sample_eta)}</span>
           </div>
         </div>
+        ${q.color_skus && q.color_skus.length ? `<div style="font-size:11px;color:#3EDB12;font-weight:600;margin-top:4px;margin-bottom:4px">${q.color_skus.map(c => esc(c.color ? c.color+': '+c.sku : c.sku)).join(' &middot; ')}</div>` : ''}
         ${q.notes ? `<div class="quote-notes">${esc(q.notes)}</div>` : ''}
         ${(() => {
           const imgs = (q.image_urls && q.image_urls.length) ? q.image_urls : (q.factory_image_url ? [q.factory_image_url] : []);
@@ -1479,8 +1480,6 @@
     document.getElementById('style-modal-title').textContent = style ? 'Edit Style' : 'Add Style';
     document.getElementById('style-name').value   = style ? style.style_name : '';
     document.getElementById('style-number').value = style ? (style.style_number || '') : '';
-    pendingColorSkus = style ? JSON.parse(JSON.stringify(style.color_skus || [])) : [];
-    renderColorSkus();
     document.getElementById('style-brand').value  = style ? (style.brand || '') : '';
     document.getElementById('style-gender').value = style ? style.gender : '';
     document.getElementById('style-date').value   = style ? (style.date_passed || '') : '';
@@ -1645,7 +1644,6 @@
     const payload = {
       style_name:    name,
       style_number:  document.getElementById('style-number').value.trim() || null,
-      color_skus:    pendingColorSkus.filter(c => c.sku.trim()),
       brand:         document.getElementById('style-brand').value || null,
       gender,
       date_passed:   document.getElementById('style-date').value || null,
@@ -1808,6 +1806,8 @@
       pendingCostings = [{ country: '' }];
     }
     renderCostings();
+    pendingColorSkus = q ? JSON.parse(JSON.stringify(q.color_skus || [])) : [];
+    renderColorSkus();
     document.getElementById('quote-notes').value   = q ? (q.notes || '') : '';
 
     // Factory images
@@ -1851,8 +1851,9 @@
       image_urls:        allImageUrls,
     };
     syncCostingsFromDOM();
-    payload.costings = pendingCostings.filter(c => c.country || QTYS.some(qty => c['fob_'+qty] || c['ddp_'+qty]) || (c.custom_qtys||[]).some(cq => cq.label || cq.fob || cq.ddp));
-    payload.country  = payload.costings[0]?.country || null;
+    payload.costings   = pendingCostings.filter(c => c.country || QTYS.some(qty => c['fob_'+qty] || c['ddp_'+qty]) || (c.custom_qtys||[]).some(cq => cq.label || cq.fob || cq.ddp));
+    payload.country    = payload.costings[0]?.country || null;
+    payload.color_skus = pendingColorSkus.filter(c => c.sku.trim());
 
     const id = document.getElementById('quote-id').value;
     let error;
