@@ -1914,22 +1914,33 @@
 
     for (const s of getVisibleStyles()) {
       const styleQuotes = allQuotes.filter(q => q.style_id === s.id);
-      const prices = q => QTYS.flatMap(qty => [q[`fob_${qty}`]||'', q[`ddp_${qty}`]||'']);
       if (styleQuotes.length === 0) {
         rows.push([s.style_name, s.style_number||'', fmtColorSkus(s), s.gender==='Womens'?"Women's":"Men's", s.date_passed||'', s.status, s.notes||'', '','','','','', ...QTYS.flatMap(()=>['','']), '']);
       } else {
-        styleQuotes.forEach((q, i) => {
-          rows.push([
-            i === 0 ? s.style_name : '',
-            i === 0 ? (s.style_number||'') : '',
-            i === 0 ? fmtColorSkus(s) : '',
-            i === 0 ? (s.gender==='Womens'?"Women's":"Men's") : '',
-            i === 0 ? (s.date_passed||'') : '',
-            i === 0 ? s.status : '',
-            i === 0 ? (s.notes||'') : '',
-            q.factory_name, q.country||'', q.factory_contact||'', q.date_sent||'', q.sample_eta||'',
-            ...prices(q), q.notes||''
-          ]);
+        let firstQuote = true;
+        styleQuotes.forEach(q => {
+          const costings = (q.costings && q.costings.length)
+            ? q.costings
+            : [Object.assign({ country: q.country||'' }, Object.fromEntries(QTYS.flatMap(qty => [['fob_'+qty, q['fob_'+qty]||''], ['ddp_'+qty, q['ddp_'+qty]||'']])))];
+          costings.forEach((c, ci) => {
+            rows.push([
+              firstQuote && ci === 0 ? s.style_name : '',
+              firstQuote && ci === 0 ? (s.style_number||'') : '',
+              firstQuote && ci === 0 ? fmtColorSkus(s) : '',
+              firstQuote && ci === 0 ? (s.gender==='Womens'?"Women's":"Men's") : '',
+              firstQuote && ci === 0 ? (s.date_passed||'') : '',
+              firstQuote && ci === 0 ? s.status : '',
+              firstQuote && ci === 0 ? (s.notes||'') : '',
+              ci === 0 ? q.factory_name : '',
+              c.country||'',
+              ci === 0 ? (q.factory_contact||'') : '',
+              ci === 0 ? (q.date_sent||'') : '',
+              ci === 0 ? (q.sample_eta||'') : '',
+              ...QTYS.flatMap(qty => [c['fob_'+qty]||'', c['ddp_'+qty]||'']),
+              ci === 0 ? (q.notes||'') : ''
+            ]);
+          });
+          firstQuote = false;
         });
       }
     }
