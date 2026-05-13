@@ -1912,7 +1912,7 @@
       ['Style Name','Master SKU','Color SKUs','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Passed','Sample ETA',...priceCols,'Factory Notes']
     ];
 
-    for (const s of allStyles) {
+    for (const s of getVisibleStyles()) {
       const styleQuotes = allQuotes.filter(q => q.style_id === s.id);
       const prices = q => QTYS.flatMap(qty => [q[`fob_${qty}`]||'', q[`ddp_${qty}`]||'']);
       if (styleQuotes.length === 0) {
