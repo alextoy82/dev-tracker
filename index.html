@@ -845,7 +845,7 @@
           <input type="date" id="style-date" />
         </div>
       </div>
-      <div class="form-group">
+      <div class="form-group" id="style-status-wrap">
         <label>Status</label>
         <select id="style-status">
           <option value="">-- No Status --</option>
@@ -1496,6 +1496,7 @@
     document.getElementById('style-gender').value = style ? style.gender : '';
     document.getElementById('style-date').value   = style ? (style.date_passed || '') : '';
     document.getElementById('style-status').value = style ? style.status : 'Spec Ready';
+    document.getElementById('style-status-wrap').style.display = style ? '' : 'none';
     document.getElementById('style-notes').value  = style ? (style.notes || '') : '';
     document.getElementById('img-input').value    = '';
 
