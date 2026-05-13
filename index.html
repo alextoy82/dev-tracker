@@ -938,7 +938,7 @@
         <div id="costings-container"></div>
       </div>
       <div class="form-group">
-        <label>Style Status</label>
+        <label>Status</label>
         <select id="quote-style-status">
           <option value="">-- No Status --</option>
           <option>Spec Ready</option>
@@ -1437,7 +1437,10 @@
             <div class="quote-factory">${esc(q.factory_name)}</div>
             <div class="quote-contact">${q.factory_contact ? esc(q.factory_contact) : ''}</div>
           </div>
-          ${q.is_sampling ? `<span class="badge badge-sampling-on">Sampling</span>` : ''}
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${q.is_sampling ? `<span class="badge badge-sampling-on">Sampling</span>` : ''}
+            ${q.status ? statusBadge(q.status) : ''}
+          </div>
         </div>
         ${priceTable}
         <div class="quote-fields">
@@ -1835,7 +1838,7 @@
     pendingColorSkus = q ? JSON.parse(JSON.stringify(q.color_skus || [])) : [];
     renderColorSkus();
     document.getElementById('quote-notes').value         = q ? (q.notes || '') : '';
-    document.getElementById('quote-style-status').value  = currentStyle?.status || 'Spec Ready';
+    document.getElementById('quote-style-status').value  = q ? (q.status || '') : '';
 
     // Factory images
     pendingQuoteFiles = [];
@@ -1874,6 +1877,7 @@
       sample_eta:        document.getElementById('quote-eta').value || null,
       is_sampling:       document.getElementById('quote-sampling').checked,
       notes:             document.getElementById('quote-notes').value.trim() || null,
+      status:            document.getElementById('quote-style-status').value || null,
       factory_image_url: allImageUrls[0] || null,
       image_urls:        allImageUrls,
     };
@@ -1894,15 +1898,6 @@
     btn.disabled = false;
 
     if (error) { toast('Error: ' + error.message, 'error'); return; }
-
-    const newStatus = document.getElementById('quote-style-status').value;
-    if (newStatus && newStatus !== currentStyle.status) {
-      await db.from('styles').update({ status: newStatus }).eq('id', currentStyle.id);
-      currentStyle.status = newStatus;
-      document.getElementById('detail-status').innerHTML = statusBadge(newStatus);
-      allStyles = allStyles.map(s => s.id === currentStyle.id ? { ...s, status: newStatus } : s);
-    }
-
     toast(id ? 'Quote updated' : 'Quote added');
     closeModal('modal-quote');
     await loadQuotes(currentStyle.id);
