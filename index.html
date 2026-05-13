@@ -938,6 +938,19 @@
         <div id="costings-container"></div>
       </div>
       <div class="form-group">
+        <label>Style Status</label>
+        <select id="quote-style-status">
+          <option value="">-- No Status --</option>
+          <option>Spec Ready</option>
+          <option>In Sampling</option>
+          <option>Sample ETA Confirmed</option>
+          <option>Sample Received</option>
+          <option>Revision Requested</option>
+          <option>Approved</option>
+          <option>Cancelled</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Notes</label>
         <textarea id="quote-notes" placeholder="MOQ, lead time, materials, revision notes..."></textarea>
       </div>
@@ -1496,7 +1509,7 @@
     document.getElementById('style-gender').value = style ? style.gender : '';
     document.getElementById('style-date').value   = style ? (style.date_passed || '') : '';
     document.getElementById('style-status').value = style ? style.status : 'Spec Ready';
-    document.getElementById('style-status-wrap').style.display = style ? '' : 'none';
+    document.getElementById('style-status-wrap').style.display = 'none';
     document.getElementById('style-notes').value  = style ? (style.notes || '') : '';
     document.getElementById('img-input').value    = '';
 
@@ -1821,7 +1834,8 @@
     renderCostings();
     pendingColorSkus = q ? JSON.parse(JSON.stringify(q.color_skus || [])) : [];
     renderColorSkus();
-    document.getElementById('quote-notes').value   = q ? (q.notes || '') : '';
+    document.getElementById('quote-notes').value         = q ? (q.notes || '') : '';
+    document.getElementById('quote-style-status').value  = currentStyle?.status || 'Spec Ready';
 
     // Factory images
     pendingQuoteFiles = [];
@@ -1880,6 +1894,15 @@
     btn.disabled = false;
 
     if (error) { toast('Error: ' + error.message, 'error'); return; }
+
+    const newStatus = document.getElementById('quote-style-status').value;
+    if (newStatus && newStatus !== currentStyle.status) {
+      await db.from('styles').update({ status: newStatus }).eq('id', currentStyle.id);
+      currentStyle.status = newStatus;
+      document.getElementById('detail-status').innerHTML = statusBadge(newStatus);
+      allStyles = allStyles.map(s => s.id === currentStyle.id ? { ...s, status: newStatus } : s);
+    }
+
     toast(id ? 'Quote updated' : 'Quote added');
     closeModal('modal-quote');
     await loadQuotes(currentStyle.id);
