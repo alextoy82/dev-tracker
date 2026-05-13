@@ -470,6 +470,7 @@
     .comment-tag-golden       { background: #FEF9C3; color: #854D0E; }
     .comment-tag-factory      { background: #F0F0F0; color: #444; }
     .comment-tag-general      { background: #F0F0F0; color: #777; }
+    .comment-tag-team         { background: #EDE9FE; color: #5B21B6; }
     /* SAMPLING TOGGLE */
     .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
     .toggle-info .toggle-label { font-size: 13px; font-weight: 500; color: #444; }
@@ -785,6 +786,7 @@
         <!-- COMMENTS -->
         <div class="section-header" style="margin-top:28px">
           <div class="section-title">Comments</div>
+          <button class="btn btn-secondary btn-sm" onclick="openManageTeam()">Manage Team</button>
         </div>
         <div id="comments-list" class="comments-list"></div>
         <div class="comment-input-wrap">
@@ -1010,6 +1012,7 @@
   let pendingQuoteFiles    = [];
   let existingQuoteImgUrls = [];
   let pendingCostings  = [];
+  let teamMembers      = [];
 
   // AUTH
   let loginFailCount = 0;
@@ -1076,6 +1079,7 @@
     if (session) {
       showView('dashboard');
       loadStyles();
+      loadTeamMembers();
     } else {
       showView('login');
     }
@@ -1342,7 +1346,8 @@
     const sel = document.getElementById('comment-factory');
     const current = sel.value;
     const factoryOptions = currentQuotes.map(q => `<option value="${esc(q.factory_name)}" ${current === q.factory_name ? 'selected' : ''}>${esc(q.factory_name)}</option>`).join('');
-    sel.innerHTML = `<option value="">General</option>${factoryOptions}<option value="__buyer__">Buyer</option><option value="__golden__">Golden Sample</option>`;
+    const teamOptions = teamMembers.map(m => `<option value="__team__${esc(m.name)}" ${current === '__team__'+m.name ? 'selected' : ''}>${esc(m.name)}</option>`).join('');
+    sel.innerHTML = `<option value="">General</option>${factoryOptions}${teamOptions ? `<optgroup label="Team">${teamOptions}</optgroup>` : ''}<option value="__buyer__">Buyer</option><option value="__golden__">Golden Sample</option>`;
 
     const list = document.getElementById('comments-list');
     if (!currentComments.length) {
@@ -1350,9 +1355,10 @@
       return;
     }
     function commentTagHtml(factory_name) {
-      if (factory_name === '__buyer__')  return `<span class="comment-tag comment-tag-buyer">Buyer</span>`;
-      if (factory_name === '__golden__') return `<span class="comment-tag comment-tag-golden">Golden Sample</span>`;
-      if (factory_name)                 return `<span class="comment-tag comment-tag-factory">${esc(factory_name)}</span>`;
+      if (factory_name === '__buyer__')             return `<span class="comment-tag comment-tag-buyer">Buyer</span>`;
+      if (factory_name === '__golden__')            return `<span class="comment-tag comment-tag-golden">Golden Sample</span>`;
+      if (factory_name && factory_name.startsWith('__team__')) return `<span class="comment-tag comment-tag-team">${esc(factory_name.slice(8))}</span>`;
+      if (factory_name)                             return `<span class="comment-tag comment-tag-factory">${esc(factory_name)}</span>`;
       return `<span class="comment-tag comment-tag-general">General</span>`;
     }
     list.innerHTML = currentComments.map(c => `
@@ -2641,7 +2647,72 @@ ${comments.length ? `
     document.body.appendChild(overlay);
   }
 
+  // TEAM MEMBERS
+  async function loadTeamMembers() {
+    const { data } = await db.from('team_members').select('*').order('name');
+    teamMembers = data || [];
+  }
+
+  function openManageTeam() {
+    renderTeamMemberList();
+    document.getElementById('new-team-member').value = '';
+    document.getElementById('modal-team').classList.remove('hidden');
+  }
+
+  function renderTeamMemberList() {
+    const container = document.getElementById('team-members-list');
+    if (!teamMembers.length) {
+      container.innerHTML = `<p style="font-size:13px;color:#AAA;margin:0">No team members yet.</p>`;
+      return;
+    }
+    container.innerHTML = teamMembers.map(m => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F0EFEB">
+        <span style="font-size:14px">${esc(m.name)}</span>
+        <button class="btn btn-danger btn-sm" onclick="deleteTeamMember('${m.id}')">Remove</button>
+      </div>
+    `).join('');
+  }
+
+  async function addTeamMember() {
+    const name = document.getElementById('new-team-member').value.trim();
+    if (!name) return;
+    const { data, error } = await db.from('team_members').insert({ name }).select().single();
+    if (error) { toast('Error: ' + error.message, 'error'); return; }
+    teamMembers.push(data);
+    teamMembers.sort((a, b) => a.name.localeCompare(b.name));
+    document.getElementById('new-team-member').value = '';
+    renderTeamMemberList();
+    renderComments();
+  }
+
+  async function deleteTeamMember(id) {
+    const { error } = await db.from('team_members').delete().eq('id', id);
+    if (error) { toast('Error: ' + error.message, 'error'); return; }
+    teamMembers = teamMembers.filter(m => m.id !== id);
+    renderTeamMemberList();
+    renderComments();
+  }
+
   // INIT — auth state handled by onAuthStateChange above
 </script>
+<!-- MANAGE TEAM MODAL -->
+<div id="modal-team" class="modal-overlay hidden">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title">Manage Team</div>
+      <button class="modal-close" onclick="closeModal('modal-team')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="team-members-list" style="margin-bottom:16px"></div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="new-team-member" placeholder="Name (e.g. Alex)" style="flex:1;padding:8px 10px;border:1px solid #E0DFDB;border-radius:3px;font-size:13px;font-family:inherit" onkeydown="if(event.key==='Enter')addTeamMember()" />
+        <button class="btn btn-primary btn-sm" onclick="addTeamMember()">Add</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-team')">Done</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
