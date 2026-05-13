@@ -1436,8 +1436,8 @@
         ${(() => {
           const imgs = (q.image_urls && q.image_urls.length) ? q.image_urls : (q.factory_image_url ? [q.factory_image_url] : []);
           if (!imgs.length) return '';
-          if (imgs.length === 1) return `<img src="${safeImgUrl(imgs[0])}" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;display:block;margin-top:12px;background:white" />`;
-          return `<div class="quote-card-gallery">${imgs.map(url => `<img src="${safeImgUrl(url)}" />`).join('')}</div>`;
+          if (imgs.length === 1) return `<img src="${safeImgUrl(imgs[0])}" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;display:block;margin-top:12px;background:white;cursor:zoom-in" onclick="openLightbox(this.src)" />`;
+          return `<div class="quote-card-gallery">${imgs.map(url => `<img src="${safeImgUrl(url)}" style="cursor:zoom-in" onclick="openLightbox(this.src)" />`).join('')}</div>`;
         })()}
         <div class="quote-actions">
           <button class="btn btn-secondary btn-sm" onclick="openQuoteModal('${q.id}')">Edit</button>
