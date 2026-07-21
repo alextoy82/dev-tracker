@@ -1928,13 +1928,13 @@
       ? s.color_skus.map(c => c.color ? `${c.color}: ${c.sku}` : c.sku).join('; ')
       : '';
     const rows = [
-      ['Style Name','Master SKU','Color SKUs','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Passed','Sample ETA',...priceCols,'Factory Notes']
+      ['Style Name','Master SKU','Color SKUs','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Passed','Sample ETA','Factory Notes',...priceCols]
     ];
 
     for (const s of getVisibleStyles()) {
       const styleQuotes = allQuotes.filter(q => q.style_id === s.id);
       if (styleQuotes.length === 0) {
-        rows.push([s.style_name, s.style_number||'', fmtColorSkus(s), s.gender==='Womens'?"Women's":"Men's", s.date_passed||'', s.status, s.notes||'', '','','','','', ...QTYS.flatMap(()=>['','']), '']);
+        rows.push([s.style_name, s.style_number||'', fmtColorSkus(s), s.gender==='Womens'?"Women's":"Men's", s.date_passed||'', s.status, s.notes||'', '','','','','', '', ...QTYS.flatMap(()=>['',''])]);
       } else {
         let firstQuote = true;
         styleQuotes.forEach(q => {
@@ -1955,8 +1955,8 @@
               ci === 0 ? (q.factory_contact||'') : '',
               ci === 0 ? (q.date_sent||'') : '',
               ci === 0 ? (q.sample_eta||'') : '',
-              ...QTYS.flatMap(qty => [c['fob_'+qty]||'', c['ddp_'+qty]||'']),
-              ci === 0 ? (q.notes||'') : ''
+              ci === 0 ? (q.notes||'') : '',
+              ...QTYS.flatMap(qty => [c['fob_'+qty]||'', c['ddp_'+qty]||''])
             ]);
           });
           firstQuote = false;
@@ -2143,10 +2143,10 @@
       ? s.color_skus.map(c => c.color ? `${c.color}: ${c.sku}` : c.sku).join('; ')
       : '';
     const rows = [
-      ['Style Name','Master SKU','Color SKUs','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Passed','Sample ETA',...priceCols,'Factory Notes']
+      ['Style Name','Master SKU','Color SKUs','Gender','Date Passed','Status','Notes','Factory','Country','Contact','Date Passed','Sample ETA','Factory Notes',...priceCols]
     ];
     if (qs.length === 0) {
-      rows.push([s.style_name, s.style_number||'', colorSkuStr, genderLabel, s.date_passed||'', s.status, s.notes||'', '','','','','', ...QTYS.flatMap(()=>['','']), '']);
+      rows.push([s.style_name, s.style_number||'', colorSkuStr, genderLabel, s.date_passed||'', s.status, s.notes||'', '','','','','', '', ...QTYS.flatMap(()=>['',''])]);
     } else {
       let firstQuote = true;
       qs.forEach(q => {
@@ -2167,8 +2167,8 @@
             ci === 0 ? (q.factory_contact||'') : '',
             ci === 0 ? (q.date_sent||'') : '',
             ci === 0 ? (q.sample_eta||'') : '',
-            ...QTYS.flatMap(qty => [c['fob_'+qty]||'', c['ddp_'+qty]||'']),
-            ci === 0 ? (q.notes||'') : ''
+            ci === 0 ? (q.notes||'') : '',
+            ...QTYS.flatMap(qty => [c['fob_'+qty]||'', c['ddp_'+qty]||''])
           ]);
         });
         firstQuote = false;
